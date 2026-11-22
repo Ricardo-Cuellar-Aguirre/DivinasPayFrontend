@@ -1,0 +1,268 @@
+<div class="dashboard-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Resumen financiero</h1>
+      <p class="page-subtitle">Cartera activa y control de cuenta corriente</p>
+    </div>
+    <button type="button" class="btn-secondary" (click)="cargarDashboard()">
+      ↻ Actualizar datos
+    </button>
+  </div>
+
+  @if (mensajeError) {
+    <div class="alert-error">{{ mensajeError }}</div>
+  }
+
+  @if (cargando) {
+    <div class="dp-card loading-box">Cargando indicadores financieros...</div>
+  } @else if (resumen) {
+    <!-- Fila 1: 4 Tarjetas KPI -->
+    <div class="kpi-grid">
+      <div class="dp-card kpi-card">
+        <div class="kpi-label">👥 Total Clientes Activos</div>
+        <div class="kpi-value-row">
+          <span class="kpi-number">{{ resumen.totalClientesActivos }}</span>
+          <span class="badge badge-success">Habilitados</span>
+        </div>
+      </div>
+
+      <div class="dp-card kpi-card">
+        <div class="kpi-label">✨ Servicios Registrados</div>
+        <div class="kpi-value-row">
+          <span class="kpi-number">{{ resumen.totalServiciosRegistrados }}</span>
+          <span class="badge badge-neutral">Catálogo activo</span>
+        </div>
+      </div>
+
+      <div class="dp-card kpi-card">
+        <div class="kpi-label">🏛 Créditos en Curso (Método Francés)</div>
+        <div class="kpi-value-row">
+          <span class="kpi-number">{{ resumen.comprasEnCurso }}</span>
+          <span class="kpi-amount">En cobranza</span>
+        </div>
+      </div>
+
+      <div class="dp-card kpi-card kpi-highlight">
+        <div class="kpi-label">📈 Cobranza Próximo Ciclo</div>
+        <div class="kpi-value-row">
+          <span class="kpi-number">S/ {{ totalCobranzaCiclo | number: '1.2-2' }}</span>
+          <span class="badge badge-success">
+            Int: S/ {{ totalInteresesCiclo | number: '1.2-2' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila 2: Gráfico de Cobranza + Acciones Rápidas -->
+    <div class="middle-grid">
+      <div class="dp-card chart-card">
+        <div class="card-top">
+          <div>
+            <h3>Cobranza proyectada (Próximos vencimientos)</h3>
+            <p class="card-desc">Flujo de cuotas pendientes ordenadas por fecha</p>
+          </div>
+          <span class="badge badge-neutral">
+            Total listado: S/ {{ totalCobranzaCiclo | number: '1.2-2' }}
+          </span>
+        </div>
+
+        @if (resumen.proximosVencimientos.length === 0) {
+          <div class="empty-state">No hay cuotas pendientes próximas a vencer.</div>
+        } @else {
+          <div class="bars-container">
+            @for (venc of resumen.proximosVencimientos.slice(0, 6); track venc.idCompra + '-' + venc.numeroCuota) {
+              <div class="bar-item">
+                <span class="bar-value">S/ {{ venc.montoCuota | number: '1.2-2' }}</span>
+                <div class="bar-track">
+                  <div
+                    class="bar-fill"
+                    [style.height.%]="alturaBarra(venc.montoCuota)"
+                  ></div>
+                </div>
+                <span class="bar-label">{{ venc.fechaVencimiento }}</span>
+                <span class="bar-client">{{ venc.nombreCliente.split(' ')[0] }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="dp-card actions-card">
+        <h3>Acciones rápidas</h3>
+        <p class="card-desc">Operaciones frecuentes del negocio</p>
+
+        <div class="quick-actions-list">
+          <a routerLink="/clientes" class="quick-btn primary-action">
+            <div>
+              <div class="qa-title">⊕ Nuevo Crédito — Cuota Fija</div>
+              <div class="qa-sub">Seleccionar cliente y simular método francés</div>
+            </div>
+            <span>→</span>
+          </a>
+
+          <a routerLink="/clientes" class="quick-btn secondary-action">
+            <div>
+              <div class="qa-title">🕒 Registrar Pago de Cuota</div>
+              <div class="qa-sub">Aplicar pago a cronograma vigente</div>
+            </div>
+            <span>→</span>
+          </a>
+
+          <button type="button" class="quick-btn secondary-action" (click)="abrirModalCorte()">
+            <div>
+              <div class="qa-title">📄 Listado de Pago (Fecha de Corte)</div>
+              <div class="qa-sub">Ver intereses acumulados y deuda del ciclo</div>
+            </div>
+            <span>→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila 3: Tabla Próximos Vencimientos -->
+    <div class="dp-card">
+      <div class="card-top">
+        <div class="title-with-badge">
+          <h3>Próximos Vencimientos</h3>
+          <span class="badge badge-warning">
+            {{ resumen.proximosVencimientos.length }} pendientes
+          </span>
+        </div>
+        <a routerLink="/clientes" class="link-action">Ver cartera completa →</a>
+      </div>
+
+      @if (resumen.proximosVencimientos.length === 0) {
+        <div class="empty-state">Todos los clientes se encuentran al día con sus cuotas.</div>
+      } @else {
+        <div class="table-responsive">
+          <table class="dp-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Compra / Cuota</th>
+                <th>Fecha Vencimiento</th>
+                <th>Cuota Fija</th>
+                <th>Estado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of resumen.proximosVencimientos; track item.idCompra + '-' + item.numeroCuota) {
+                <tr>
+                  <td>
+                    <div class="client-cell">
+                      <span class="mini-avatar">{{ item.nombreCliente.slice(0, 2).toUpperCase() }}</span>
+                      <strong>{{ item.nombreCliente }}</strong>
+                    </div>
+                  </td>
+                  <td>Compra #{{ item.idCompra }} — Cuota {{ item.numeroCuota }}</td>
+                  <td>{{ item.fechaVencimiento }}</td>
+                  <td><strong>S/ {{ item.montoCuota | number: '1.2-2' }}</strong></td>
+                  <td><span class="badge badge-warning">● Pendiente</span></td>
+                  <td>
+                    <a
+                      [routerLink]="['/creditos', item.idCliente, item.idCompra]"
+                      class="btn-secondary btn-sm"
+                    >
+                      Gestionar cuota
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Modal Listado de Pago en Fecha de Corte (Requerimiento #6 del Enunciado) -->
+@if (mostrarModalCorte) {
+  <div class="modal-backdrop" (click)="cerrarModalCorte()">
+    <div class="dp-card modal-wide" (click)="$event.stopPropagation()">
+      <div class="card-top">
+        <div>
+          <h3>Listado de Pago por Fecha de Corte</h3>
+          <p class="card-desc">Detalle de compras ordenadas por fecha e intereses acumulados</p>
+        </div>
+        <button type="button" class="btn-secondary" (click)="cerrarModalCorte()">✕</button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="form-group" style="margin-bottom: 0; flex: 1;">
+          <label for="fechaFiltro">Filtrar por fecha de vencimiento / pago (opcional)</label>
+          <input
+            id="fechaFiltro"
+            type="date"
+            [(ngModel)]="fechaCorteFiltro"
+            class="form-control"
+          />
+        </div>
+        <button type="button" class="btn-primary" (click)="cargarListadoCorte()">
+          Generar listado
+        </button>
+      </div>
+
+      @if (cargandoListado) {
+        <div class="empty-state">Calculando intereses del ciclo...</div>
+      } @else if (listadoCorte.length === 0) {
+        <div class="empty-state">No se encontraron obligaciones pendientes para la fecha seleccionada.</div>
+      } @else {
+        <div class="corte-list">
+          @for (cli of listadoCorte; track cli.idCliente) {
+            <div class="corte-client-box">
+              <div class="corte-client-header">
+                <div>
+                  <strong>{{ cli.nombreCliente }}</strong>
+                  <span class="field-hint">
+                    · Día corte: {{ cli.fechaCorte }} · Fecha pago ciclo: {{ cli.fechaPago }}
+                  </span>
+                </div>
+                <div class="corte-totals">
+                  <span class="badge badge-neutral">
+                    Intereses: S/ {{ cli.totalInteresesAcumulados | number: '1.2-2' }}
+                  </span>
+                  <span class="badge badge-success">
+                    Total a pagar: S/ {{ cli.totalAPagar | number: '1.2-2' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="dp-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha Compra</th>
+                      <th>Producto / Servicio</th>
+                      <th>Modalidad</th>
+                      <th>Cuota</th>
+                      <th>Días Gracia</th>
+                      <th>Int. Gracia</th>
+                      <th>Int. Cuota</th>
+                      <th>Monto Cuota</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (det of cli.detalle; track det.idCompra + '-' + det.numeroCuota) {
+                      <tr>
+                        <td>{{ det.fechaCompra }}</td>
+                        <td>{{ det.descripcionProducto }}</td>
+                        <td>{{ det.formaPago }}</td>
+                        <td>{{ det.numeroCuota }} / {{ det.cuotasTotales }}</td>
+                        <td>{{ det.diasGracia }} d</td>
+                        <td>S/ {{ det.interesGracia | number: '1.2-2' }}</td>
+                        <td>S/ {{ det.interesCuota | number: '1.2-2' }}</td>
+                        <td><strong>S/ {{ det.montoCuota | number: '1.2-2' }}</strong></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}

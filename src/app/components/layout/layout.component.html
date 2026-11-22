@@ -1,0 +1,127 @@
+<div class="layout-shell">
+  <!-- Sidebar Izquierdo -->
+  <aside class="sidebar">
+    <div class="brand-box">
+      <div class="brand-emblem">DP</div>
+      <div>
+        <div class="brand-title">DivinasPay</div>
+        <div class="brand-sub">Belleza que crece contigo</div>
+      </div>
+    </div>
+
+    <div class="menu-section-label">GESTIÓN</div>
+
+    <nav class="nav-menu">
+      <!-- Menú para ADMIN_SISTEMA -->
+      @if (sesion?.rol === 'ADMIN_SISTEMA') {
+        <a routerLink="/tiendas" routerLinkActive="active" class="nav-item">
+          <span>🏪</span> Tiendas / Comercios
+        </a>
+        <a routerLink="/auditoria" routerLinkActive="active" class="nav-item">
+          <span>📋</span> Auditoría Global
+        </a>
+        <a routerLink="/configuracion" routerLinkActive="active" class="nav-item">
+          <span>⚙️</span> Configuración
+        </a>
+      }
+
+      <!-- Menú para ADMIN_TIENDA -->
+      @if (sesion?.rol === 'ADMIN_TIENDA') {
+        <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
+          <span>⊞</span> Dashboard
+        </a>
+        <a routerLink="/clientes" routerLinkActive="active" class="nav-item">
+          <span>👥</span> Clientes
+        </a>
+        <a routerLink="/productos" routerLinkActive="active" class="nav-item">
+          <span>✨</span> Productos & Servicios
+        </a>
+        <a routerLink="/creditos" routerLinkActive="active" class="nav-item">
+          <span>💳</span> Créditos / Compras
+        </a>
+        <a routerLink="/auditoria" routerLinkActive="active" class="nav-item">
+          <span>📋</span> Bitácora Operaciones
+        </a>
+        <a routerLink="/configuracion" routerLinkActive="active" class="nav-item">
+          <span>⚙️</span> Configuración
+        </a>
+      }
+
+      <!-- Menú para CLIENTE -->
+      @if (sesion?.rol === 'CLIENTE') {
+        <a routerLink="/creditos" routerLinkActive="active" class="nav-item">
+          <span>💳</span> Mis Créditos / Compras
+        </a>
+        <a routerLink="/productos" routerLinkActive="active" class="nav-item">
+          <span>✨</span> Catálogo Servicios
+        </a>
+        <a routerLink="/configuracion" routerLinkActive="active" class="nav-item">
+          <span>👤</span> Mi Perfil
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="support-card">
+        <div class="support-title">♡ Soporte Divinas</div>
+        <p class="support-text">¿Necesitas ayuda con un crédito o cálculo financiero?</p>
+        <button type="button" class="btn-secondary btn-full" (click)="toggleAyuda()">
+          Guía rápida de uso
+        </button>
+      </div>
+      <div class="privacy-note">🛡 Datos protegidos y privados</div>
+    </div>
+  </aside>
+
+  <!-- Contenido Principal -->
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <h2 class="store-title">
+          {{ tiendaActual?.nombreTienda || 'DivinasPay Plataforma' }}
+        </h2>
+        @if (tiendaActual?.direccion) {
+          <span class="store-badge">📍 {{ tiendaActual.direccion }}</span>
+        }
+        <span class="panel-tag">
+          {{ sesion?.rol === 'CLIENTE' ? 'PANEL DE PAGOS' : 'PANEL ADMINISTRATIVO' }}
+        </span>
+      </div>
+
+      <div class="topbar-right">
+        <div class="user-pill">
+          <div class="user-avatar">{{ inicialesUsuario }}</div>
+          <div class="user-meta">
+            <span class="user-name">{{ sesion?.nombre }}</span>
+            <span class="user-role">{{ etiquetaRol }}</span>
+          </div>
+        </div>
+        <button type="button" class="btn-secondary" (click)="cerrarSesion()">
+          Salir
+        </button>
+      </div>
+    </header>
+
+    <main class="content-container">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
+
+<!-- Modal de Ayuda y Asistencia Técnica (Requerimiento del Enunciado) -->
+@if (mostrarAyuda) {
+  <div class="modal-backdrop" (click)="toggleAyuda()">
+    <div class="dp-card modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Guía de Uso y Reglas Financieras — DivinasPay</h3>
+        <button type="button" class="btn-secondary" (click)="toggleAyuda()">✕</button>
+      </div>
+      <div class="help-body">
+        <p><strong>1. Base de cálculo comercial:</strong> Año de 360 días y mes de 30 días.</p>
+        <p><strong>2. Período de gracia:</strong> Si la compra se realiza hasta el día de corte, el primer ciclo vence en el día de pago del mismo mes; si es posterior al corte, pasa al mes siguiente.</p>
+        <p><strong>3. Método Francés Vencido:</strong> Las compras "En meses" capitalizan los días de gracia y generan cuotas fijas constantes (interés decreciente y amortización creciente).</p>
+        <p><strong>4. Orden de pago:</strong> Las cuotas deben pagarse de forma secuencial (cuota 1, luego cuota 2, etc.) sin exceder la línea de crédito disponible del cliente.</p>
+      </div>
+    </div>
+  </div>
+}
