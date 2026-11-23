@@ -13,10 +13,8 @@ import { ConfiguracionComponent } from './components/configuracion/configuracion
 import { AuditoriaComponent } from './components/auditoria/auditoria.component';
 
 export const routes: Routes = [
-  {
-    path: 'login',
-    component: LoginComponent
-  },
+  { path: '', redirectTo: 'login', pathMatch: 'full' },
+  { path: 'login', component: LoginComponent },
   {
     path: '',
     component: LayoutComponent,

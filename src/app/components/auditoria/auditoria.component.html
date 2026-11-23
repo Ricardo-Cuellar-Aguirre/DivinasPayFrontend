@@ -1,0 +1,68 @@
+<div class="auditoria-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Bitácora de Operaciones</h1>
+      <p class="page-subtitle">
+        Registro automático de auditoría de transacciones y accesos en base de datos
+      </p>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 0.6rem;">
+      <select [(ngModel)]="limite" (change)="cargarOperaciones()" class="form-control">
+        <option [ngValue]="50">Últimas 50</option>
+        <option [ngValue]="100">Últimas 100</option>
+        <option [ngValue]="250">Últimas 250</option>
+      </select>
+      <button type="button" class="btn-secondary" (click)="cargarOperaciones()">
+        ↻ Actualizar
+      </button>
+    </div>
+  </div>
+
+  @if (mensajeError) {
+    <div class="alert-error">{{ mensajeError }}</div>
+  }
+
+  <div class="dp-card">
+    @if (cargando) {
+      <div class="empty-state">Cargando registros de auditoría...</div>
+    } @else if (operaciones.length === 0) {
+      <div class="empty-state">No existen operaciones registradas aún.</div>
+    } @else {
+      <div class="table-responsive">
+        <table class="dp-table">
+          <thead>
+            <tr>
+              <th>Fecha y Hora</th>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Acción</th>
+              <th>Endpoint</th>
+              <th>Estado HTTP</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (op of operaciones; track op.idOperacion) {
+              <tr>
+                <td>{{ op.fechaHora | date: 'dd/MM/yyyy HH:mm:ss' }}</td>
+                <td><strong>{{ op.usuario || 'Anónimo' }}</strong></td>
+                <td><span class="badge badge-neutral">{{ op.rol || '-' }}</span></td>
+                <td>{{ op.accion }}</td>
+                <td><code>{{ op.metodo }} {{ op.ruta }}</code></td>
+                <td>
+                  <span
+                    class="badge"
+                    [class.badge-success]="op.codigoHttp >= 200 && op.codigoHttp < 300"
+                    [class.badge-danger]="op.codigoHttp >= 400"
+                  >
+                    {{ op.codigoHttp }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

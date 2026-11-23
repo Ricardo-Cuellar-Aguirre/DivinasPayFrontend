@@ -1,0 +1,167 @@
+<div class="tiendas-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Tiendas y Establecimientos</h1>
+      <p class="page-subtitle">
+        Gestión multiempresa de comercios afiliados a la plataforma DivinasPay
+      </p>
+    </div>
+    <button type="button" class="btn-primary" (click)="abrirModalNueva()">
+      + Dar de Alta Tienda
+    </button>
+  </div>
+
+  @if (mensajeExito) {
+    <div class="alert-success">{{ mensajeExito }}</div>
+  }
+  @if (mensajeError) {
+    <div class="alert-error">{{ mensajeError }}</div>
+  }
+
+  <div class="dp-card">
+    @if (cargando) {
+      <div class="empty-state">Cargando establecimientos registrados...</div>
+    } @else if (tiendas.length === 0) {
+      <div class="empty-state">Aún no hay tiendas registradas en el sistema.</div>
+    } @else {
+      <div class="table-responsive">
+        <table class="dp-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre del Establecimiento</th>
+              <th>Dirección</th>
+              <th>Teléfono</th>
+              <th>Usuario Admin</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of tiendas; track t.idTienda) {
+              <tr>
+                <td>#{{ t.idTienda }}</td>
+                <td><strong>{{ t.nombreTienda }}</strong></td>
+                <td>{{ t.direccion }}</td>
+                <td>{{ t.telefono }}</td>
+                <td><span class="badge badge-neutral">&#64;{{ t.usuarioAdmin }}</span></td>
+                <td>
+                  @if (t.estado) {
+                    <span class="badge badge-success">● Activa</span>
+                  } @else {
+                    <span class="badge badge-danger">● Baja</span>
+                  }
+                </td>
+                <td>
+                  <div style="display: flex; gap: 0.45rem;">
+                    <button
+                      type="button"
+                      class="btn-secondary"
+                      style="padding: 0.4rem 0.75rem; font-size: 0.78rem;"
+                      (click)="abrirModalEditar(t)"
+                    >
+                      Editar
+                    </button>
+                    @if (t.estado) {
+                      <button
+                        type="button"
+                        class="btn-danger-outline"
+                        (click)="darDeBajaTienda(t)"
+                      >
+                        Dar de baja
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+@if (mostrarModal) {
+  <div class="modal-backdrop" (click)="cerrarModal()">
+    <div class="dp-card modal-box" (click)="$event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3>{{ tiendaEditando ? 'Editar Tienda' : 'Registrar Nueva Tienda' }}</h3>
+        <button type="button" class="btn-secondary" (click)="cerrarModal()">✕</button>
+      </div>
+
+      @if (errorFormulario) {
+        <div class="alert-error">{{ errorFormulario }}</div>
+      }
+
+      <form [formGroup]="tiendaForm" (ngSubmit)="guardarTienda()">
+        <div class="form-group">
+          <label for="nombreTienda">Nombre de la tienda / salón *</label>
+          <input
+            id="nombreTienda"
+            type="text"
+            formControlName="nombreTienda"
+            class="form-control"
+            placeholder="Ej. Divinas Salón & Spa"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="direccion">Dirección del local *</label>
+          <input
+            id="direccion"
+            type="text"
+            formControlName="direccion"
+            class="form-control"
+            placeholder="Ej. Av. Surco 1167"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="telefono">Teléfono (9 dígitos) *</label>
+          <input
+            id="telefono"
+            type="text"
+            maxlength="9"
+            formControlName="telefono"
+            class="form-control"
+            placeholder="Ej. 987654321"
+          />
+          @if (tiendaForm.get('telefono')?.touched && tiendaForm.get('telefono')?.hasError('pattern')) {
+            <span class="field-error">El teléfono debe tener exactamente 9 dígitos numéricos.</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="usuarioAdmin">Usuario administrador *</label>
+          <input
+            id="usuarioAdmin"
+            type="text"
+            formControlName="usuarioAdmin"
+            class="form-control"
+            placeholder="Ej. dan_carri_69"
+          />
+        </div>
+
+        @if (!tiendaEditando) {
+          <div class="form-group">
+            <label for="passwordAdmin">Contraseña administrador (8 a 72 caracteres) *</label>
+            <input
+              id="passwordAdmin"
+              type="password"
+              formControlName="passwordAdmin"
+              class="form-control"
+            />
+          </div>
+        }
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;">
+          <button type="button" class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn-primary" [disabled]="guardando">
+            {{ guardando ? 'Guardando...' : 'Guardar tienda' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

@@ -1,0 +1,171 @@
+<div class="config-page">
+  <div class="breadcrumb">Configuraciones &gt; Perfil</div>
+  <h1 class="page-title" style="margin-bottom: 1.5rem;">
+    {{ sesion?.rol === 'CLIENTE' ? 'Perfil del cliente' : 'Configuración de cuenta' }}
+  </h1>
+
+  @if (mensajeExito) {
+    <div class="alert-success">{{ mensajeExito }}</div>
+  }
+  @if (mensajeError) {
+    <div class="alert-error">{{ mensajeError }}</div>
+  }
+
+  @if (cargando) {
+    <div class="dp-card empty-state">Cargando información de perfil...</div>
+  } @else if (sesion?.rol === 'CLIENTE' && perfilCliente) {
+    <!-- Vista Perfil del Cliente (Idéntica a captura de Ventansfrontend.pdf) -->
+    <div class="profile-layout">
+      <div class="dp-card profile-left-card">
+        <span class="profile-tag">PERFIL DEL CLIENTE</span>
+        <div class="profile-circle">👤</div>
+        <h2 class="profile-fullname">{{ perfilCliente.nombreCliente }}</h2>
+        <span class="field-hint">&#64;{{ perfilCliente.usuarioCliente }}</span>
+        <span class="badge badge-warning" style="margin: 0.75rem 0;">
+          ★ Cliente frecuente
+        </span>
+
+        <div class="profile-store-footer">
+          <span class="field-hint">Cliente de</span>
+          <strong>{{ tiendaInfo?.nombreTienda || 'Establecimiento DivinasPay' }}</strong>
+        </div>
+      </div>
+
+      <div class="dp-card">
+        <div class="card-top">
+          <h3>Información personal y crediticia</h3>
+          <a routerLink="/creditos" class="btn-primary" style="text-decoration: none;">
+            Ver mis créditos
+          </a>
+        </div>
+
+        <h4 class="sub-heading">Datos generales</h4>
+        <div class="info-grid">
+          <div class="info-field">
+            <span class="field-hint">Nombre completo</span>
+            <div class="readonly-box">{{ perfilCliente.nombreCliente }}</div>
+          </div>
+          <div class="info-field">
+            <span class="field-hint">Nombre de usuario</span>
+            <div class="readonly-box">&#64;{{ perfilCliente.usuarioCliente }}</div>
+          </div>
+        </div>
+
+        <h4 class="sub-heading" style="margin-top: 1.25rem;">Condiciones de cuenta corriente</h4>
+        <div class="info-grid">
+          <div class="info-field">
+            <span class="field-hint">Línea de crédito asignada</span>
+            <div class="readonly-box">
+              S/ {{ perfilCliente.limiteMaxCredito | number: '1.2-2' }} ({{ perfilCliente.moneda }})
+            </div>
+          </div>
+          <div class="info-field">
+            <span class="field-hint">Tasa pactada</span>
+            <div class="readonly-box">
+              {{ perfilCliente.tipoTasa }} {{ perfilCliente.tasaInteres }}%
+              {{ perfilCliente.capitalizacion ? '(' + perfilCliente.capitalizacion + ')' : '' }}
+            </div>
+          </div>
+          <div class="info-field">
+            <span class="field-hint">Día de corte / Día de pago</span>
+            <div class="readonly-box">
+              Corte día {{ perfilCliente.fechaCorte }} · Pago día {{ perfilCliente.fechaPago }}
+            </div>
+          </div>
+          <div class="info-field">
+            <span class="field-hint">Plazo máximo</span>
+            <div class="readonly-box">Hasta {{ perfilCliente.maxMesesCredito }} meses</div>
+          </div>
+        </div>
+
+        <div class="note-banner">
+          ⓘ Para actualizar tus datos personales o ampliar tu línea de crédito, comunícate con la administración de tu tienda.
+        </div>
+      </div>
+    </div>
+  } @else if (sesion?.rol === 'ADMIN_TIENDA' && tiendaInfo) {
+    <!-- Vista Configuración de Tienda (ADMIN_TIENDA) -->
+    <div class="dp-card" style="max-width: 680px;">
+      <div class="card-top">
+        <div>
+          <h3>Datos del Establecimiento</h3>
+          <p class="field-hint">Información visible en la cabecera y comprobantes</p>
+        </div>
+        @if (!editandoTienda) {
+          <button type="button" class="btn-primary" (click)="editandoTienda = true">
+            ✎ Editar perfil
+          </button>
+        }
+      </div>
+
+      <form [formGroup]="tiendaForm" (ngSubmit)="guardarCambiosTienda()">
+        <div class="form-group">
+          <label for="nombreT">Nombre de la tienda</label>
+          <input
+            id="nombreT"
+            type="text"
+            formControlName="nombreTienda"
+            class="form-control"
+            [readonly]="!editandoTienda"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="dirT">Dirección</label>
+          <input
+            id="dirT"
+            type="text"
+            formControlName="direccion"
+            class="form-control"
+            [readonly]="!editandoTienda"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="telT">Teléfono (9 dígitos)</label>
+          <input
+            id="telT"
+            type="text"
+            maxlength="9"
+            formControlName="telefono"
+            class="form-control"
+            [readonly]="!editandoTienda"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="userT">Usuario administrador</label>
+          <input
+            id="userT"
+            type="text"
+            formControlName="usuarioAdmin"
+            class="form-control"
+            [readonly]="!editandoTienda"
+          />
+        </div>
+
+        @if (editandoTienda) {
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button
+              type="button"
+              class="btn-secondary"
+              (click)="editandoTienda = false"
+            >
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primary" [disabled]="guardando">
+              {{ guardando ? 'Guardando...' : 'Guardar cambios' }}
+            </button>
+          </div>
+        }
+      </form>
+    </div>
+  } @else {
+    <div class="dp-card" style="max-width: 560px;">
+      <h3>Administrador del Sistema</h3>
+      <p class="field-hint" style="margin-top: 0.4rem;">
+        Sesión activa como <strong>{{ sesion?.nombre }}</strong>. Las credenciales maestras del sistema se administran desde la configuración segura del servidor backend.
+      </p>
+    </div>
+  }
+</div>

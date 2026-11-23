@@ -80,7 +80,7 @@
         <h2 class="store-title">
           {{ tiendaActual?.nombreTienda || 'DivinasPay Plataforma' }}
         </h2>
-        @if (tiendaActual?.direccion) {
+        @if (tiendaActual && tiendaActual.direccion) {
           <span class="store-badge">📍 {{ tiendaActual.direccion }}</span>
         }
         <span class="panel-tag">
