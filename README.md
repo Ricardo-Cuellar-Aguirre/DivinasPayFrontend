@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # DivinaspayFrontend
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.30.
@@ -58,6 +59,10 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+=======
+# DivinasPayFrontend
+Apartado frontend para proyecto DivinasPay del curso Finanzas e Ingenieria Economica
+>>>>>>> 2c2655ce3ad4e250b59a6e7c903d34b9ee822592
 =======
 # DivinasPayFrontend
 Apartado frontend para proyecto DivinasPay del curso Finanzas e Ingenieria Economica
