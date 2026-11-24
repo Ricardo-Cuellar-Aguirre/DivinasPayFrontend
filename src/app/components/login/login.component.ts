@@ -1,26 +1,25 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
-import { Router } from '@angular/router';
-import {
-  LoginRequestDTO,
-  RolUsuario,
-  TiendaPublicaDTO,
-  TipoUsuarioLogin
-} from '../../models/auth.model';
+import { Router, RouterModule } from '@angular/router';
+import { Observable, catchError, concat, first, throwError } from 'rxjs';
+import { LoginRequestDTO, LoginResponseDTO } from '../../models/auth.model';
 import { ErrorResponse } from '../../models/sistema.model';
+import { TiendaPublicaDTO } from '../../models/tienda.model';
 import { AuthService } from '../../services/auth.service';
+
+const CLAVE_RECORDAR_USUARIO = 'divinaspay_usuario_recordado';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
@@ -28,50 +27,31 @@ export class LoginComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  loginForm!: FormGroup;
   tiendasPublicas: TiendaPublicaDTO[] = [];
-  cargando = false;
   mostrarPassword = false;
-  mensajeError: string | null = null;
-  mostrarInfoRegistro = false;
+  cargando = false;
+
+  errorLogin: string | null = null;
+  infoMensaje: string | null = null;
+  loginForm!: FormGroup;
 
   ngOnInit(): void {
-    // Si ya hay una sesión activa, redirigir directamente a su panel
-    const sesion = this.authService.sesionActual;
-    if (sesion && sesion.expiraEnTimestamp > Date.now()) {
-      this.redirigirPorRol(sesion.rol);
-      return;
-    }
+    const usuarioGuardado = localStorage.getItem(CLAVE_RECORDAR_USUARIO) || '';
 
     this.loginForm = this.fb.group({
-      tipo: ['ADMIN' as TipoUsuarioLogin, [Validators.required]],
-      idTienda: [null as number | null],
-      usuario: ['', [Validators.required, Validators.maxLength(100)]],
+      usuario: [usuarioGuardado, [Validators.required]],
       password: ['', [Validators.required]],
       recordarAcceso: [true]
     });
 
-    this.configurarValidacionTienda();
-    this.cargarTiendas();
+    this.cargarTiendasPublicas();
   }
 
-  private configurarValidacionTienda(): void {
-    this.loginForm.get('tipo')?.valueChanges.subscribe((tipo: TipoUsuarioLogin) => {
-      const controlTienda = this.loginForm.get('idTienda');
-      if (tipo === 'CLIENTE') {
-        controlTienda?.setValidators([Validators.required]);
-      } else {
-        controlTienda?.clearValidators();
-        controlTienda?.setValue(null);
-      }
-      controlTienda?.updateValueAndValidity();
-    });
-  }
-
-  private cargarTiendas(): void {
+  private cargarTiendasPublicas(): void {
     this.authService.listarTiendasPublicas().subscribe({
-      next: (tiendas) => {
+      next: (tiendas: TiendaPublicaDTO[]) => {
         this.tiendasPublicas = tiendas;
       },
       error: () => {
@@ -80,53 +60,105 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  seleccionarTipo(tipo: TipoUsuarioLogin): void {
-    this.loginForm.patchValue({ tipo });
-    this.mensajeError = null;
+  toggleMostrarPassword(): void {
+    this.mostrarPassword = !this.mostrarPassword;
+    this.cdr.detectChanges();
+  }
+
+  onOlvidePassword(): void {
+    this.errorLogin = null;
+    this.infoMensaje =
+      'Para restablecer tu contraseña, comunícate con el administrador de tu salón o con Soporte 24/7.';
+    this.cdr.detectChanges();
+  }
+
+  onSocialLogin(proveedor: 'Google' | 'Apple'): void {
+    this.errorLogin = null;
+    this.infoMensaje = `El inicio de sesión con ${proveedor} estará disponible próximamente. Ingresa con tu usuario y contraseña de DivinasPay.`;
+    this.cdr.detectChanges();
   }
 
   iniciarSesion(): void {
+    this.errorLogin = null;
+    this.infoMensaje = null;
+
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
+      this.errorLogin = 'Ingresa tu usuario o correo y tu contraseña.';
+      this.cdr.detectChanges();
       return;
     }
 
-    this.cargando = true;
-    this.mensajeError = null;
+    const { usuario, password, recordarAcceso } = this.loginForm.value;
+    const usuarioLimpio = usuario.trim();
 
-    const valores = this.loginForm.value;
-    const dto: LoginRequestDTO = {
-      tipo: valores.tipo,
-      idTienda: valores.tipo === 'CLIENTE' ? Number(valores.idTienda) : null,
-      usuario: valores.usuario.trim(),
-      password: valores.password
-    };
-
-    this.authService.login(dto, Boolean(valores.recordarAcceso)).subscribe({
-      next: (resp) => {
-        this.cargando = false;
-        this.redirigirPorRol(resp.rol);
-      },
-      error: (err: HttpErrorResponse) => {
-        this.cargando = false;
-        const cuerpoError = err.error as ErrorResponse | undefined;
-        this.mensajeError =
-          cuerpoError?.mensaje || 'No se pudo iniciar sesión. Verifica tus credenciales.';
-      }
-    });
-  }
-
-  private redirigirPorRol(rol: RolUsuario): void {
-    switch (rol) {
-      case 'ADMIN_SISTEMA':
-        this.router.navigate(['/tiendas']);
-        break;
-      case 'ADMIN_TIENDA':
-        this.router.navigate(['/dashboard']);
-        break;
-      case 'CLIENTE':
-        this.router.navigate(['/creditos']);
-        break;
+    if (recordarAcceso) {
+      localStorage.setItem(CLAVE_RECORDAR_USUARIO, usuarioLimpio);
+    } else {
+      localStorage.removeItem(CLAVE_RECORDAR_USUARIO);
     }
+
+    this.cargando = true;
+    this.cdr.detectChanges();
+
+    const intentos: LoginRequestDTO[] = [];
+    for (const tienda of this.tiendasPublicas) {
+      intentos.push({
+        tipo: 'ADMIN',
+        idTienda: tienda.idTienda,
+        usuario: usuarioLimpio,
+        password
+      });
+      intentos.push({
+        tipo: 'CLIENTE',
+        idTienda: tienda.idTienda,
+        usuario: usuarioLimpio,
+        password
+      });
+    }
+    intentos.push({
+      tipo: 'SISTEMA',
+      idTienda: null,
+      usuario: usuarioLimpio,
+      password
+    });
+
+    let ultimoError: HttpErrorResponse | null = null;
+    const flujos: Observable<LoginResponseDTO>[] = intentos.map((payload, idx) =>
+      this.authService.login(payload).pipe(
+        catchError((err: HttpErrorResponse) => {
+          ultimoError = err;
+          if (idx < intentos.length - 1) {
+            return new Observable<LoginResponseDTO>((sub) => sub.complete());
+          }
+          return throwError(() => ultimoError || err);
+        })
+      )
+    );
+
+    concat(...flujos)
+      .pipe(first())
+      .subscribe({
+        next: (resp: LoginResponseDTO) => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+
+          const destino =
+            resp.rol === 'ADMIN_SISTEMA'
+              ? '/tiendas'
+              : resp.rol === 'CLIENTE'
+              ? '/productos'
+              : '/dashboard';
+
+          this.router.navigate([destino]);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.cargando = false;
+          const body = err?.error as ErrorResponse | undefined;
+          this.errorLogin =
+            body?.mensaje || 'Usuario o contraseña incorrectos.';
+          this.cdr.detectChanges();
+        }
+      });
   }
 }

@@ -1,0 +1,196 @@
+<div class="auth-split-layout">
+  <!-- Panel Izquierdo: Formulario de Registro de Cliente -->
+  <div class="auth-left-panel">
+    <div class="auth-form-container">
+      <!-- Marca DivinasPay -->
+      <div class="brand-header">
+        <img
+          src="assets/images/logo-divinas.png"
+          alt="DivinasPay"
+          class="brand-logo-img"
+        />
+        <div class="brand-text">
+          <span class="brand-name">DivinasPay</span>
+          <span class="brand-tagline">Pagos y belleza</span>
+        </div>
+      </div>
+
+      <h1 class="auth-heading">CREAR CUENTA</h1>
+
+      @if (errorMensaje) {
+        <div class="auth-error-alert">{{ errorMensaje }}</div>
+      }
+
+      <form class="auth-form" (ngSubmit)="registrarCuenta()">
+        <!-- Seleccionar tienda (solo tiendas activas, inmutable tras crear la cuenta) -->
+        <div class="form-field">
+          <div class="label-row">
+            <label for="seleccionarTienda" class="field-label">Seleccionar tienda</label>
+            <span class="field-note">No se podrá modificar luego</span>
+          </div>
+          <div class="select-wrapper">
+            <select
+              id="seleccionarTienda"
+              name="idTiendaSeleccionada"
+              [(ngModel)]="idTiendaSeleccionada"
+              [disabled]="cargandoTiendas || enviando"
+              class="field-input field-select"
+              required
+            >
+              <option [ngValue]="null" disabled>
+                {{ cargandoTiendas ? 'Cargando tiendas activas...' : 'Selecciona una tienda' }}
+              </option>
+              @for (tienda of tiendasDisponibles; track tienda.idTienda) {
+                <option [ngValue]="tienda.idTienda">{{ tienda.nombreTienda }}</option>
+              }
+            </select>
+            <svg
+              viewBox="0 0 20 20"
+              class="select-chevron"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <path d="M5 7.5L10 12.5L15 7.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Nombre -->
+        <div class="form-field">
+          <label for="nombreInput" class="field-label">Nombre</label>
+          <input
+            id="nombreInput"
+            name="nombre"
+            type="text"
+            maxlength="100"
+            [(ngModel)]="nombre"
+            class="field-input"
+            placeholder="SalonBelleza"
+            required
+          />
+        </div>
+
+        <!-- email (usuario_cliente en BD, máx. 30 caracteres) -->
+        <div class="form-field">
+          <div class="label-row">
+            <label for="emailInput" class="field-label">email</label>
+            <span
+              class="char-counter"
+              [class.near-limit]="email.length >= 25 && email.length < maxEmailLength"
+              [class.at-limit]="email.length >= maxEmailLength"
+            >
+              {{ email.length }}/{{ maxEmailLength }}
+            </span>
+          </div>
+          <input
+            id="emailInput"
+            name="email"
+            type="text"
+            [maxlength]="maxEmailLength"
+            [(ngModel)]="email"
+            class="field-input"
+            placeholder="nombre@spa.com"
+            autocomplete="username"
+            required
+          />
+        </div>
+
+        <!-- contraseña -->
+        <div class="form-field">
+          <label for="passwordInput" class="field-label">contraseña</label>
+          <div class="password-wrapper">
+            <input
+              id="passwordInput"
+              name="password"
+              [type]="mostrarPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              class="field-input password-input"
+              placeholder="••••••••"
+              autocomplete="new-password"
+              required
+            />
+            <button
+              type="button"
+              class="eye-toggle-btn"
+              (click)="mostrarPassword = !mostrarPassword"
+              [attr.aria-label]="mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            >
+              <img
+                [src]="mostrarPassword ? 'assets/icons/eye-closed.png' : 'assets/icons/eye-open.png'"
+                [alt]="mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                class="eye-icon-img"
+              />
+            </button>
+          </div>
+        </div>
+
+        <!-- Confirmar contraseña -->
+        <div class="form-field">
+          <label for="confirmarPasswordInput" class="field-label">Confirmar contraseña</label>
+          <div class="password-wrapper">
+            <input
+              id="confirmarPasswordInput"
+              name="confirmarPassword"
+              [type]="mostrarConfirmarPassword ? 'text' : 'password'"
+              [(ngModel)]="confirmarPassword"
+              class="field-input password-input"
+              placeholder="••••••••"
+              autocomplete="new-password"
+              required
+            />
+            <button
+              type="button"
+              class="eye-toggle-btn"
+              (click)="mostrarConfirmarPassword = !mostrarConfirmarPassword"
+              [attr.aria-label]="mostrarConfirmarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            >
+              <img
+                [src]="mostrarConfirmarPassword ? 'assets/icons/eye-closed.png' : 'assets/icons/eye-open.png'"
+                [alt]="mostrarConfirmarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                class="eye-icon-img"
+              />
+            </button>
+          </div>
+        </div>
+
+        <!-- Botón Registrarse -->
+        <button
+          type="submit"
+          class="btn-registrarse"
+          [disabled]="enviando || cargandoTiendas"
+        >
+          {{ enviando ? 'Registrando...' : 'Registrarse' }}
+        </button>
+
+        <!-- Fila inferior: Recordar acceso -->
+        <div class="form-bottom-row">
+          <label class="remember-label">
+            <input
+              type="checkbox"
+              name="recordarAcceso"
+              [(ngModel)]="recordarAcceso"
+              class="remember-checkbox"
+            />
+            <span>Recordar acceso</span>
+          </label>
+          <a routerLink="/login" class="login-link">¿Ya tienes cuenta? Iniciar sesión</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Panel Derecho: Imagen lateral sin "Seguro y privado" ni "Soporte 24/7" -->
+  <div class="auth-right-panel">
+    <img
+      src="assets/images/logo-principal.jpg"
+      alt="DivinasPay — Spa, estética y belleza"
+      class="panel-bg-img"
+    />
+    <div class="panel-overlay"></div>
+    <div class="right-bottom-bar">
+      <span class="right-caption">DivinasPay — Spa, estética y belleza</span>
+    </div>
+  </div>
+</div>

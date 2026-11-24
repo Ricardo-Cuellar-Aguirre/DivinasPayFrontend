@@ -1,65 +1,50 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { catchError, throwError } from 'rxjs';
-import { environment } from '../../environments/environment';
-import { LoginResponseDTO } from '../models/auth.model';
+import { HttpInterceptorFn } from '@angular/common/http';
+import { RolUsuario } from '../models/auth.model';
 
-export interface SesionAlmacenada extends LoginResponseDTO {
+const CLAVE_SESION = 'divinaspay_sesion';
+
+export interface SesionAlmacenada {
+  token: string;
+  tipoToken: string;
+  rol: RolUsuario;
+  idTienda: number | null;
+  idCliente: number | null;
+  nombre: string;
+  expiraEnSegundos: number;
   expiraEnTimestamp: number;
 }
 
-export const SESSION_STORAGE_KEY = 'divinas_sesion';
-
 export function obtenerSesionAlmacenada(): SesionAlmacenada | null {
-  const raw =
-    localStorage.getItem(SESSION_STORAGE_KEY) ??
-    sessionStorage.getItem(SESSION_STORAGE_KEY);
-
-  if (!raw) {
-    return null;
-  }
-
+  const raw = localStorage.getItem(CLAVE_SESION);
+  if (!raw) return null;
   try {
-    return JSON.parse(raw) as SesionAlmacenada;
+    const sesion = JSON.parse(raw) as SesionAlmacenada;
+    if (sesion.expiraEnTimestamp && Date.now() > sesion.expiraEnTimestamp) {
+      localStorage.removeItem(CLAVE_SESION);
+      return null;
+    }
+    return sesion;
   } catch {
-    limpiarSesionAlmacenada();
+    localStorage.removeItem(CLAVE_SESION);
     return null;
   }
-}
-
-export function limpiarSesionAlmacenada(): void {
-  localStorage.removeItem(SESSION_STORAGE_KEY);
-  sessionStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const router = inject(Router);
-  const esApiPropia = req.url.startsWith(environment.apiUrl);
-  const esEndpointPublico =
-    req.url.includes('/auth/login') || req.url.includes('/auth/tiendas');
-
-  let requestClonada = req;
-
-  if (esApiPropia && !esEndpointPublico) {
-    const sesion = obtenerSesionAlmacenada();
-    if (sesion?.token) {
-      const prefijo = sesion.tipoToken || 'Bearer';
-      requestClonada = req.clone({
-        setHeaders: {
-          Authorization: `${prefijo} ${sesion.token}`
-        }
-      });
-    }
+  if (req.url.includes('/api/auth/')) {
+    return next(req);
   }
 
-  return next(requestClonada).pipe(
-    catchError((error: HttpErrorResponse) => {
-      if (esApiPropia && !esEndpointPublico && error.status === 401) {
-        limpiarSesionAlmacenada();
-        router.navigate(['/login']);
-      }
-      return throwError(() => error);
-    })
-  );
+  const sesion = obtenerSesionAlmacenada();
+  if (!sesion?.token) {
+    return next(req);
+  }
+
+  const reqAutenticada = req.clone({
+    setHeaders: {
+      Authorization: `${sesion.tipoToken || 'Bearer'} ${sesion.token}`
+    }
+  });
+
+  return next(reqAutenticada);
 };

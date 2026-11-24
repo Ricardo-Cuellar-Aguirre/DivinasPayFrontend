@@ -1,21 +1,20 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import {
-  limpiarSesionAlmacenada,
-  obtenerSesionAlmacenada
-} from '../interceptor/auth.interceptor';
+import { AuthService } from '../services/auth.service';
 
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = (route) => {
+  const authService = inject(AuthService);
   const router = inject(Router);
-  const sesion = obtenerSesionAlmacenada();
+  const sesion = authService.sesionActual;
 
-  if (!sesion || !sesion.token) {
-    return router.createUrlTree(['/login']);
+  if (!sesion) {
+    router.navigate(['/login']);
+    return false;
   }
 
-  if (sesion.expiraEnTimestamp && Date.now() >= sesion.expiraEnTimestamp) {
-    limpiarSesionAlmacenada();
-    return router.createUrlTree(['/login']);
+  const rolesPermitidos = route.data?.['roles'] as string[] | undefined;
+  if (rolesPermitidos && !rolesPermitidos.includes(sesion.rol)) {
+    return false;
   }
 
   return true;

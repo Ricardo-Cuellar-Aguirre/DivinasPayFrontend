@@ -1,9 +1,9 @@
-export type TipoUsuarioLogin = 'SISTEMA' | 'ADMIN' | 'CLIENTE';
+export type TipoLogin = 'SISTEMA' | 'ADMIN' | 'CLIENTE';
 export type RolUsuario = 'ADMIN_SISTEMA' | 'ADMIN_TIENDA' | 'CLIENTE';
 
 export interface LoginRequestDTO {
-  tipo: TipoUsuarioLogin;
-  idTienda?: number | null;
+  tipo: TipoLogin;
+  idTienda: number | null;
   usuario: string;
   password: string;
 }
@@ -16,9 +16,4 @@ export interface LoginResponseDTO {
   idCliente: number | null;
   nombre: string;
   expiraEnSegundos: number;
-}
-
-export interface TiendaPublicaDTO {
-  idTienda: number;
-  nombreTienda: string;
 }

@@ -1,0 +1,144 @@
+.tiendas-page {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.tiendas-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1f2d24;
+  margin: 0 0 0.25rem 0;
+}
+
+.page-subtitle {
+  font-size: 0.88rem;
+  color: #6b736e;
+  margin: 0;
+}
+
+.assigned-pill {
+  background-color: #e4ede7;
+  border: 1px solid #c7d9ce;
+  color: #1f2d24;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+}
+
+.state-card {
+  background-color: #ffffff;
+  border: 1px solid #e6e2d8;
+  border-radius: 14px;
+  padding: 2.25rem;
+  text-align: center;
+  color: #6b736e;
+}
+
+/* Grilla de Cartas de Tiendas (no interactivas para cambio) */
+.stores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1.25rem;
+}
+
+.store-card {
+  background-color: #ffffff;
+  border: 1px solid #e6e2d8;
+  border-radius: 14px;
+  padding: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  cursor: default;
+  user-select: none;
+}
+
+/* Carta de la tienda con la que se creó la cuenta */
+.store-card.selected {
+  background-color: #f3f7f4;
+  border: 2px solid #283b2e;
+  box-shadow: 0 10px 24px rgba(31, 45, 36, 0.08);
+}
+
+/* Cartas de otras tiendas bloqueadas */
+.store-card.locked-other {
+  background-color: #faf9f6;
+  border-color: #e6e2d8;
+  opacity: 0.68;
+}
+
+.store-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.store-badge {
+  font-size: 0.73rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background-color: #ece8de;
+  color: #6b736e;
+}
+
+.store-badge.active {
+  background-color: #283b2e;
+  color: #ffffff;
+}
+
+.check-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #283b2e;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.store-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1f2d24;
+  margin: 0;
+}
+
+.store-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid #dce6df;
+}
+
+.store-detail-line {
+  font-size: 0.84rem;
+  color: #2c3b32;
+  margin: 0;
+}
+
+.store-lock-note {
+  font-size: 0.77rem;
+  font-weight: 600;
+  color: #355240;
+  margin: 0.35rem 0 0 0;
+}
+
+.store-disabled-note {
+  font-size: 0.8rem;
+  color: #7c8580;
+  margin: 0;
+}

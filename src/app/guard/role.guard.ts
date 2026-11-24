@@ -1,11 +1,12 @@
 import { inject } from '@angular/core';
 import { ActivatedRouteSnapshot, CanActivateFn, Router } from '@angular/router';
-import { obtenerSesionAlmacenada } from '../interceptor/auth.interceptor';
 import { RolUsuario } from '../models/auth.model';
+import { AuthService } from '../services/auth.service';
 
 export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
+  const authService = inject(AuthService);
   const router = inject(Router);
-  const sesion = obtenerSesionAlmacenada();
+  const sesion = authService.sesionActual;
 
   if (!sesion) {
     return router.createUrlTree(['/login']);
@@ -21,14 +22,13 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     return true;
   }
 
-  // Redirección segura según el rol real del token
   switch (sesion.rol) {
     case 'ADMIN_SISTEMA':
       return router.createUrlTree(['/tiendas']);
     case 'ADMIN_TIENDA':
       return router.createUrlTree(['/dashboard']);
     case 'CLIENTE':
-      return router.createUrlTree(['/creditos']);
+      return router.createUrlTree(['/productos']);
     default:
       return router.createUrlTree(['/login']);
   }

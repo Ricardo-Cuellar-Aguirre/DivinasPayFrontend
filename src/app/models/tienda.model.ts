@@ -1,19 +1,23 @@
-export interface Tienda {
-  idTienda?: number;
+export interface TiendaPublicaDTO {
+  idTienda: number;
   nombreTienda: string;
-  direccion: string;
-  telefono: string;
-  usuarioAdmin: string;
-  passwordAdmin?: string;
-  estado: boolean;
+  direccion?: string;
+  telefono?: string;
 }
 
 export interface TiendaRequestDTO {
   nombreTienda: string;
   direccion: string;
-  telefono: string; // Exactamente 9 dígitos [0-9]{9}
+  telefono: string;
   usuarioAdmin: string;
-  passwordAdmin: string; // Entre 8 y 72 caracteres
+  passwordAdmin: string;
+}
+
+export interface TiendaUpdateDTO {
+  nombreTienda: string;
+  direccion: string;
+  telefono: string;
+  usuarioAdmin: string;
 }
 
 export interface TiendaResponseDTO {
@@ -23,11 +27,4 @@ export interface TiendaResponseDTO {
   telefono: string;
   usuarioAdmin: string;
   estado: boolean;
-}
-
-export interface TiendaUpdateDTO {
-  nombreTienda: string;
-  direccion: string;
-  telefono: string;
-  usuarioAdmin: string;
 }

@@ -1,284 +1,378 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators
-} from '@angular/forms';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { ClienteResponseDTO } from '../../models/cliente.model';
-import {
-  CompraRequestDTO,
-  FormaPagoCompra,
-  SimulacionRequestDTO,
-  SimulacionResponseDTO
-} from '../../models/compra.model';
-import {
-  ListadoPagoDTO,
-  PagoCompraDTO,
-  PagosClienteDTO
-} from '../../models/pago.model';
-import { ProductoServicioResponseDTO } from '../../models/producto-servicio.model';
-import { ErrorResponse } from '../../models/sistema.model';
+import { HttpClient } from '@angular/common/http';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
-import { ClienteService } from '../../services/cliente.service';
-import { CompraService } from '../../services/compra.service';
-import { ListadoPagoService } from '../../services/listado-pago.service';
-import { PagoService } from '../../services/pago.service';
-import { ProductoServicioService } from '../../services/producto-servicio.service';
+
+export interface PerfilClienteData {
+  idCliente: number;
+  nombreCliente: string;
+  usuarioCliente: string;
+  tipoTasa: string;
+  tasaInteres: number;
+  maxMesesCredito: number;
+  fechaCorte: number;
+  fechaPago: number;
+  limiteMaxCredito: number;
+}
+
+export interface CreditoActivoItem {
+  idCompra: number;
+  nombreProducto: string;
+  descripcion: string;
+  montoTotalFinanciado: number;
+  cuotaFijaMensual: number;
+  capitalPendiente: number;
+  cuotasPagadas: number;
+  totalCuotas: number;
+  cuotasRestantes: number;
+  fechaVencimientoProxima: string;
+  numeroCuotaProxima: number;
+  montoCuotaProxima: number;
+}
+
+export interface CompraHistorialItem {
+  idCompra: number;
+  nombreProducto: string;
+  fechaCompra: string;
+  fechaRaw: Date | null;
+  numeroRecibo: string;
+  cantidad: number;
+  montoTotal: number;
+}
 
 @Component({
   selector: 'app-perfil-crediticio',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './perfil-crediticio.component.html',
   styleUrl: './perfil-crediticio.component.css'
 })
 export class PerfilCrediticioComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
-  private readonly clienteService = inject(ClienteService);
-  private readonly pagoService = inject(PagoService);
-  private readonly productoService = inject(ProductoServicioService);
-  private readonly compraService = inject(CompraService);
-  private readonly listadoPagoService = inject(ListadoPagoService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  idTienda!: number;
-  idCliente!: number;
-  esAdminTienda = false;
-
-  listaClientesTienda: ClienteResponseDTO[] = [];
-  cliente: ClienteResponseDTO | null = null;
-  estadoCuenta: PagosClienteDTO | null = null;
-  listadoCorte: ListadoPagoDTO | null = null;
-  productosActivos: ProductoServicioResponseDTO[] = [];
-
-  tabActiva: 'activos' | 'historial' | 'corte' = 'activos';
+  tabActiva: 'ACTIVOS' | 'HISTORIAL' = 'ACTIVOS';
   cargando = true;
-  mensajeError: string | null = null;
-  mensajeExito: string | null = null;
 
-  // Modal Simulación / Nuevo Crédito
-  mostrarModalCredito = false;
-  creditoForm!: FormGroup;
-  simulacion: SimulacionResponseDTO | null = null;
-  simulando = false;
-  registrandoCompra = false;
-  errorCredito: string | null = null;
+  cliente: PerfilClienteData = {
+    idCliente: 0,
+    nombreCliente: 'Cliente DivinasPay',
+    usuarioCliente: 'cliente',
+    tipoTasa: 'Efectiva',
+    tasaInteres: 0,
+    maxMesesCredito: 6,
+    fechaCorte: 15,
+    fechaPago: 20,
+    limiteMaxCredito: 0
+  };
+
+  creditoUtilizado = 0;
+  creditosActivos: CreditoActivoItem[] = [];
+  historialCompleto: CompraHistorialItem[] = [];
+  historialFiltrado: CompraHistorialItem[] = [];
+
+  mesSeleccionado = '';
+  anioSeleccionado = '';
+  aniosDisponibles: number[] = [];
+
+  readonly meses = [
+    { valor: '1', nombre: 'Enero' },
+    { valor: '2', nombre: 'Febrero' },
+    { valor: '3', nombre: 'Marzo' },
+    { valor: '4', nombre: 'Abril' },
+    { valor: '5', nombre: 'Mayo' },
+    { valor: '6', nombre: 'Junio' },
+    { valor: '7', nombre: 'Julio' },
+    { valor: '8', nombre: 'Agosto' },
+    { valor: '9', nombre: 'Septiembre' },
+    { valor: '10', nombre: 'Octubre' },
+    { valor: '11', nombre: 'Noviembre' },
+    { valor: '12', nombre: 'Diciembre' }
+  ];
 
   ngOnInit(): void {
     const sesion = this.authService.sesionActual;
-    if (!sesion?.idTienda) {
-      this.router.navigate(['/login']);
+    const paramId = this.route.snapshot.paramMap.get('idCliente');
+    const idCliente = paramId ? Number(paramId) : sesion?.idCliente ?? 0;
+    const idTienda = sesion?.idTienda ?? 1;
+
+    if (sesion?.nombre) {
+      this.cliente.nombreCliente = sesion.nombre;
+    }
+
+    if (!idCliente) {
+      this.cargando = false;
+      this.cdr.detectChanges();
       return;
     }
 
-    this.idTienda = sesion.idTienda;
-    this.esAdminTienda = sesion.rol === 'ADMIN_TIENDA';
-    this.inicializarFormularioCredito();
-
-    if (sesion.rol === 'CLIENTE' && sesion.idCliente) {
-      this.idCliente = sesion.idCliente;
-      this.cargarDatosCliente();
-    } else if (this.esAdminTienda) {
-      this.clienteService.listar(this.idTienda).subscribe({
-        next: (clientes) => {
-          this.listaClientesTienda = clientes.filter((c) => c.estado);
-          const paramId = Number(this.route.snapshot.paramMap.get('idCliente'));
-          if (paramId) {
-            this.idCliente = paramId;
-            this.cargarDatosCliente();
-          } else if (this.listaClientesTienda.length > 0) {
-            this.idCliente = this.listaClientesTienda[0].idCliente;
-            this.cargarDatosCliente();
-          } else {
-            this.cargando = false;
-          }
-        },
-        error: () => {
-          this.cargando = false;
-          this.mensajeError = 'No se pudo cargar la cartera de clientes.';
-        }
-      });
-    }
+    this.cargarDatosClienteYCompras(idTienda, idCliente);
   }
 
-  private inicializarFormularioCredito(): void {
-    const hoyIso = new Date().toISOString().split('T')[0];
-
-    this.creditoForm = this.fb.group({
-      idProductoServicio: [null as number | null, [Validators.required]],
-      fechaCompra: [hoyIso, [Validators.required]],
-      formaPago: ['En meses' as FormaPagoCompra, [Validators.required]],
-      numMeses: [3, [Validators.min(1)]]
-    });
-
-    // Ajustar reglas según el producto seleccionado
-    this.creditoForm.get('idProductoServicio')?.valueChanges.subscribe((idProd) => {
-      this.simulacion = null;
-      this.errorCredito = null;
-      const prod = this.productosActivos.find((p) => p.idProductoServicio === Number(idProd));
-      if (prod && prod.formaVenta === 'Al contado') {
-        this.creditoForm.patchValue({ formaPago: 'Unico pago', numMeses: 1 });
-      }
-    });
-
-    this.creditoForm.get('formaPago')?.valueChanges.subscribe((forma: FormaPagoCompra) => {
-      this.simulacion = null;
-      const mesesCtrl = this.creditoForm.get('numMeses');
-      if (forma === 'En meses') {
-        mesesCtrl?.setValidators([
-          Validators.required,
-          Validators.min(1),
-          Validators.max(this.cliente?.maxMesesCredito ?? 36)
-        ]);
-        if (!mesesCtrl?.value || mesesCtrl.value < 1) {
-          mesesCtrl?.setValue(1);
-        }
-      } else {
-        mesesCtrl?.clearValidators();
-        mesesCtrl?.setValue(1);
-      }
-      mesesCtrl?.updateValueAndValidity();
-    });
-  }
-
-  cambiarClienteSeleccionado(nuevoId: number): void {
-    this.idCliente = Number(nuevoId);
-    this.cargarDatosCliente();
-  }
-
-  cargarDatosCliente(): void {
-    this.cargando = true;
-    this.mensajeError = null;
-
+  private cargarDatosClienteYCompras(idTienda: number, idCliente: number): void {
     forkJoin({
-      cliente: this.clienteService.obtener(this.idTienda, this.idCliente),
-      pagos: this.pagoService.obtenerEstadoCuenta(this.idTienda, this.idCliente),
-      corte: this.listadoPagoService.obtenerPorCliente(this.idTienda, this.idCliente),
-      productos: this.productoService.listar(this.idTienda, true)
-    }).subscribe({
-      next: ({ cliente, pagos, corte, productos }) => {
-        this.cliente = cliente;
-        this.estadoCuenta = pagos;
-        this.listadoCorte = corte;
-        this.productosActivos = productos;
-        this.cargando = false;
-      },
-      error: (err: HttpErrorResponse) => {
-        this.cargando = false;
-        const body = err.error as ErrorResponse | undefined;
-        this.mensajeError = body?.mensaje || 'No se pudo cargar el perfil crediticio.';
+      perfil: this.http
+        .get<any>(`${environment.apiUrl}/tiendas/${idTienda}/clientes/${idCliente}`)
+        .pipe(
+          catchError(() =>
+            this.http
+              .get<any>(`${environment.apiUrl}/clientes/${idCliente}`)
+              .pipe(catchError(() => of(null)))
+          )
+        ),
+      compras: this.http
+        .get<any[]>(`${environment.apiUrl}/clientes/${idCliente}/compras`)
+        .pipe(
+          catchError(() =>
+            this.http
+              .get<any[]>(`${environment.apiUrl}/tiendas/${idTienda}/clientes/${idCliente}/compras`)
+              .pipe(catchError(() => of([])))
+          )
+        )
+    }).subscribe(({ perfil, compras }) => {
+      if (perfil) {
+        this.cliente = {
+          idCliente: perfil.idCliente ?? idCliente,
+          nombreCliente: perfil.nombreCliente ?? this.cliente.nombreCliente,
+          usuarioCliente: perfil.usuarioCliente ?? this.cliente.usuarioCliente,
+          tipoTasa: perfil.tipoTasa ?? 'Efectiva',
+          tasaInteres: Number(perfil.tasaInteres ?? 0),
+          maxMesesCredito: Number(perfil.maxMesesCredito ?? 6),
+          fechaCorte: Number(perfil.fechaCorte ?? 15),
+          fechaPago: Number(perfil.fechaPago ?? 20),
+          limiteMaxCredito: Number(perfil.limiteMaxCredito ?? 0)
+        };
       }
+
+      this.procesarCompras(compras || [], idCliente);
+      this.cargando = false;
+      this.cdr.detectChanges();
     });
   }
 
-  get porcentajeUtilizacion(): number {
-    if (!this.estadoCuenta || this.estadoCuenta.limiteMaxCredito <= 0) return 0;
-    const pct =
-      (Number(this.estadoCuenta.saldoPendienteTotal) /
-        Number(this.estadoCuenta.limiteMaxCredito)) *
-      100;
-    return Math.min(100, Math.max(0, Number(pct.toFixed(2))));
-  }
+  private procesarCompras(listaCompras: any[], idCliente: number): void {
+    const activosTemp: CreditoActivoItem[] = [];
+    const historialTemp: CompraHistorialItem[] = [];
 
-  get creditosActivos(): PagoCompraDTO[] {
-    if (!this.estadoCuenta) return [];
-    return this.estadoCuenta.compras.filter((c) => Number(c.saldoPendiente) > 0);
-  }
+    for (const raw of listaCompras) {
+      const formaPago = (raw.formaPago ?? '').toString().trim().toLowerCase();
+      const estado = (raw.estado ?? '').toString().trim().toLowerCase();
 
-  get historialCompras(): PagoCompraDTO[] {
-    return this.estadoCuenta?.compras ?? [];
-  }
+      const nombreProd =
+        raw.nombreProducto ??
+        raw.productoServicio?.descripcion ??
+        raw.producto?.descripcion ??
+        raw.descripcion ??
+        'Servicio / Producto DivinasPay';
 
-  get productoSeleccionado(): ProductoServicioResponseDTO | undefined {
-    const id = Number(this.creditoForm.get('idProductoServicio')?.value);
-    return this.productosActivos.find((p) => p.idProductoServicio === id);
-  }
+      const descripcionProd =
+        raw.descripcionProducto ??
+        raw.productoServicio?.marca ??
+        raw.observacion ??
+        'Amortización francesa · Cuotas mensuales constantes';
 
-  abrirModalCredito(): void {
-    this.errorCredito = null;
-    this.simulacion = null;
-    const primerProducto = this.productosActivos[0] ?? null;
-    const formaInicial: FormaPagoCompra =
-      primerProducto?.formaVenta === 'Al contado' ? 'Unico pago' : 'En meses';
+      const montoTotal = Number(raw.montoTotal ?? raw.monto ?? 0);
+      const cuotasArr: any[] = Array.isArray(raw.cuotas) ? raw.cuotas : [];
+      const totalCuotas = Number(raw.numCuotas ?? raw.meses ?? cuotasArr.length ?? 1);
 
-    this.creditoForm.reset({
-      idProductoServicio: primerProducto ? primerProducto.idProductoServicio : null,
-      fechaCompra: new Date().toISOString().split('T')[0],
-      formaPago: formaInicial,
-      numMeses: formaInicial === 'En meses' ? Math.min(3, this.cliente?.maxMesesCredito ?? 3) : 1
-    });
+      const esEnMeses =
+        formaPago.includes('mes') || formaPago.includes('credito') || formaPago.includes('crédito');
+      const estaCancelada =
+        estado === 'cancelado' || estado === 'pagado' || estado === 'finalizado';
 
-    this.mostrarModalCredito = true;
-  }
+      if (esEnMeses && !estaCancelada) {
+        const pagadas = cuotasArr.filter(
+          (q) =>
+            (q.estado ?? '').toString().toLowerCase() === 'pagada' ||
+            (q.estado ?? '').toString().toLowerCase() === 'pagado'
+        ).length;
 
-  cerrarModalCredito(): void {
-    this.mostrarModalCredito = false;
-  }
+        const pendientes = cuotasArr.filter(
+          (q) =>
+            (q.estado ?? '').toString().toLowerCase() !== 'pagada' &&
+            (q.estado ?? '').toString().toLowerCase() !== 'pagado'
+        );
 
-  simularCredito(): void {
-    if (this.creditoForm.invalid || !this.productoSeleccionado) {
-      this.creditoForm.markAllAsTouched();
-      return;
+        const cuotaRef = pendientes[0] ?? cuotasArr[0];
+        const cuotaFija = Number(
+          cuotaRef?.montoCuota ??
+            cuotaRef?.cuotaFija ??
+            (totalCuotas > 0 ? montoTotal / totalCuotas : montoTotal)
+        );
+
+        const capitalPendiente = Math.max(
+          0,
+          Number((montoTotal - pagadas * cuotaFija).toFixed(2))
+        );
+        const numeroCuotaProxima = Number(cuotaRef?.numeroCuota ?? pagadas + 1);
+        const fechaVenc = this.formatearFecha(cuotaRef?.fechaVencimiento ?? raw.fechaProximoPago);
+
+        const itemCredito: CreditoActivoItem = {
+          idCompra: raw.idCompra ?? 0,
+          nombreProducto: nombreProd,
+          descripcion: descripcionProd,
+          montoTotalFinanciado: montoTotal,
+          cuotaFijaMensual: cuotaFija,
+          capitalPendiente,
+          cuotasPagadas: pagadas,
+          totalCuotas,
+          cuotasRestantes: Math.max(0, totalCuotas - pagadas),
+          fechaVencimientoProxima: fechaVenc,
+          numeroCuotaProxima,
+          montoCuotaProxima: cuotaFija
+        };
+
+        activosTemp.push(itemCredito);
+
+        if (cuotasArr.length === 0 && raw.idCompra) {
+          this.cargarCuotasDeCompra(idCliente, raw.idCompra, itemCredito);
+        }
+      }
+
+      if (estaCancelada) {
+        const fechaObj = this.parsearFecha(raw.fechaCompra ?? raw.fecha);
+        historialTemp.push({
+          idCompra: raw.idCompra ?? 0,
+          nombreProducto: nombreProd,
+          fechaCompra: this.formatearFecha(raw.fechaCompra ?? raw.fecha),
+          fechaRaw: fechaObj,
+          numeroRecibo:
+            raw.numeroRecibo ??
+            raw.codigoRecibo ??
+            `REC-${String(raw.idCompra ?? 1).padStart(5, '0')}`,
+          cantidad: Number(raw.cantidad ?? 1),
+          montoTotal
+        });
+      }
     }
 
-    this.simulando = true;
-    this.errorCredito = null;
-    const val = this.creditoForm.value;
-
-    const dto: SimulacionRequestDTO = {
-      fechaCompra: val.fechaCompra,
-      monto: this.productoSeleccionado.precioCredito,
-      formaPago: val.formaPago,
-      numMeses: val.formaPago === 'En meses' ? Number(val.numMeses) : 1
-    };
-
-    this.compraService.simular(this.idTienda, this.idCliente, dto).subscribe({
-      next: (resp) => {
-        this.simulacion = resp;
-        this.simulando = false;
-      },
-      error: (err: HttpErrorResponse) => {
-        this.simulando = false;
-        const body = err.error as ErrorResponse | undefined;
-        this.errorCredito = body?.mensaje || 'No se pudo simular el plan de pagos.';
-      }
-    });
+    this.creditosActivos = activosTemp;
+    this.historialCompleto = historialTemp;
+    this.recalcularCreditoUtilizado();
+    this.extraerAniosHistorial();
+    this.filtrarHistorial();
   }
 
-  confirmarOtorgarCredito(): void {
-    if (!this.esAdminTienda || this.creditoForm.invalid) return;
+  private cargarCuotasDeCompra(
+    idCliente: number,
+    idCompra: number,
+    item: CreditoActivoItem
+  ): void {
+    this.http
+      .get<any[]>(`${environment.apiUrl}/clientes/${idCliente}/compras/${idCompra}/cuotas`)
+      .pipe(
+        catchError(() =>
+          this.http
+            .get<any[]>(`${environment.apiUrl}/compras/${idCompra}/cuotas`)
+            .pipe(catchError(() => of([])))
+        )
+      )
+      .subscribe((cuotas) => {
+        if (!cuotas || cuotas.length === 0) return;
 
-    this.registrandoCompra = true;
-    this.errorCredito = null;
-    const val = this.creditoForm.value;
+        const pagadas = cuotas.filter(
+          (q) =>
+            (q.estado ?? '').toString().toLowerCase() === 'pagada' ||
+            (q.estado ?? '').toString().toLowerCase() === 'pagado'
+        ).length;
+        const pendientes = cuotas.filter(
+          (q) =>
+            (q.estado ?? '').toString().toLowerCase() !== 'pagada' &&
+            (q.estado ?? '').toString().toLowerCase() !== 'pagado'
+        );
+        const proxima = pendientes[0] ?? cuotas[0];
 
-    const dto: CompraRequestDTO = {
-      idProductoServicio: Number(val.idProductoServicio),
-      fechaCompra: val.fechaCompra,
-      formaPago: val.formaPago,
-      numMeses: val.formaPago === 'En meses' ? Number(val.numMeses) : 1
-    };
+        item.totalCuotas = cuotas.length;
+        item.cuotasPagadas = pagadas;
+        item.cuotasRestantes = Math.max(0, cuotas.length - pagadas);
+        item.cuotaFijaMensual = Number(
+          proxima?.montoCuota ?? proxima?.cuotaFija ?? item.cuotaFijaMensual
+        );
+        item.capitalPendiente = Math.max(
+          0,
+          Number((item.montoTotalFinanciado - pagadas * item.cuotaFijaMensual).toFixed(2))
+        );
+        item.numeroCuotaProxima = Number(proxima?.numeroCuota ?? pagadas + 1);
+        item.montoCuotaProxima = item.cuotaFijaMensual;
+        item.fechaVencimientoProxima = this.formatearFecha(proxima?.fechaVencimiento);
 
-    this.compraService.registrar(this.idTienda, this.idCliente, dto).subscribe({
-      next: (compraCreada) => {
-        this.registrandoCompra = false;
-        this.mostrarModalCredito = false;
-        this.mensajeExito = `Crédito #${compraCreada.idCompra} registrado con éxito.`;
-        this.cargarDatosCliente();
-      },
-      error: (err: HttpErrorResponse) => {
-        this.registrandoCompra = false;
-        const body = err.error as ErrorResponse | undefined;
-        this.errorCredito = body?.mensaje || 'Error al registrar el crédito.';
+        this.recalcularCreditoUtilizado();
+        this.cdr.detectChanges();
+      });
+  }
+
+  private recalcularCreditoUtilizado(): void {
+    this.creditoUtilizado = this.creditosActivos.reduce(
+      (acc, c) => acc + c.capitalPendiente,
+      0
+    );
+  }
+
+  get creditoDisponible(): number {
+    return Math.max(0, this.cliente.limiteMaxCredito - this.creditoUtilizado);
+  }
+
+  get porcentajeUtilizado(): number {
+    if (this.cliente.limiteMaxCredito <= 0) return 0;
+    const pct = (this.creditoUtilizado / this.cliente.limiteMaxCredito) * 100;
+    return Math.min(100, Math.max(0, pct));
+  }
+
+  get etiquetaTipoTasa(): string {
+    const t = (this.cliente.tipoTasa ?? '').trim().toLowerCase();
+    return t === 'nominal' ? 'TNA' : 'TEA';
+  }
+
+  private extraerAniosHistorial(): void {
+    const setAnios = new Set<number>([new Date().getFullYear()]);
+    for (const h of this.historialCompleto) {
+      if (h.fechaRaw) {
+        setAnios.add(h.fechaRaw.getFullYear());
       }
+    }
+    this.aniosDisponibles = Array.from(setAnios).sort((a, b) => b - a);
+  }
+
+  filtrarHistorial(): void {
+    this.historialFiltrado = this.historialCompleto.filter((item) => {
+      if (!item.fechaRaw) {
+        return !this.mesSeleccionado && !this.anioSeleccionado;
+      }
+      const coincideMes =
+        !this.mesSeleccionado ||
+        item.fechaRaw.getMonth() + 1 === Number(this.mesSeleccionado);
+      const coincideAnio =
+        !this.anioSeleccionado ||
+        item.fechaRaw.getFullYear() === Number(this.anioSeleccionado);
+      return coincideMes && coincideAnio;
     });
+    this.cdr.detectChanges();
+  }
+
+  cambiarTab(tab: 'ACTIVOS' | 'HISTORIAL'): void {
+    this.tabActiva = tab;
+    this.cdr.detectChanges();
+  }
+
+  private parsearFecha(valor: any): Date | null {
+    if (!valor) return null;
+    const d = new Date(valor);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  private formatearFecha(valor: any): string {
+    const d = this.parsearFecha(valor);
+    if (!d) return 'Por confirmar';
+    const dia = String(d.getUTCDate()).padStart(2, '0');
+    const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const anio = d.getUTCFullYear();
+    return `${dia}/${mes}/${anio}`;
   }
 }

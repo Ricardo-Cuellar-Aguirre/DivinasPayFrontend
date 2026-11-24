@@ -1,127 +1,140 @@
-<div class="layout-shell">
-  <!-- Sidebar Izquierdo -->
+<div class="app-shell">
+  <!-- Menú Lateral Izquierdo -->
   <aside class="sidebar">
-    <div class="brand-box">
-      <div class="brand-emblem">DP</div>
-      <div>
-        <div class="brand-title">DivinasPay</div>
-        <div class="brand-sub">Belleza que crece contigo</div>
+    <div class="sidebar-brand">
+      <img
+        src="assets/images/logo-divinas.png"
+        alt="DivinasPay"
+        class="sidebar-logo"
+      />
+      <div class="sidebar-brand-text">
+        <span class="brand-title">DivinasPay</span>
+        <span class="brand-subtitle">Belleza que crece contigo</span>
       </div>
     </div>
 
-    <div class="menu-section-label">GESTIÓN</div>
+    <div class="sidebar-section-label">MENÚ PRINCIPAL</div>
 
-    <nav class="nav-menu">
-      <!-- Menú para ADMIN_SISTEMA -->
-      @if (sesion?.rol === 'ADMIN_SISTEMA') {
-        <a routerLink="/tiendas" routerLinkActive="active" class="nav-item">
-          <span>🏪</span> Tiendas / Comercios
-        </a>
-        <a routerLink="/auditoria" routerLinkActive="active" class="nav-item">
-          <span>📋</span> Auditoría Global
-        </a>
-        <a routerLink="/configuracion" routerLinkActive="active" class="nav-item">
-          <span>⚙️</span> Configuración
-        </a>
-      }
-
-      <!-- Menú para ADMIN_TIENDA -->
-      @if (sesion?.rol === 'ADMIN_TIENDA') {
-        <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
-          <span>⊞</span> Dashboard
-        </a>
-        <a routerLink="/clientes" routerLinkActive="active" class="nav-item">
-          <span>👥</span> Clientes
-        </a>
-        <a routerLink="/productos" routerLinkActive="active" class="nav-item">
-          <span>✨</span> Productos & Servicios
-        </a>
-        <a routerLink="/creditos" routerLinkActive="active" class="nav-item">
-          <span>💳</span> Créditos / Compras
-        </a>
-        <a routerLink="/auditoria" routerLinkActive="active" class="nav-item">
-          <span>📋</span> Bitácora Operaciones
-        </a>
-        <a routerLink="/configuracion" routerLinkActive="active" class="nav-item">
-          <span>⚙️</span> Configuración
-        </a>
-      }
-
-      <!-- Menú para CLIENTE -->
-      @if (sesion?.rol === 'CLIENTE') {
-        <a routerLink="/creditos" routerLinkActive="active" class="nav-item">
-          <span>💳</span> Mis Créditos / Compras
-        </a>
-        <a routerLink="/productos" routerLinkActive="active" class="nav-item">
-          <span>✨</span> Catálogo Servicios
-        </a>
-        <a routerLink="/configuracion" routerLinkActive="active" class="nav-item">
-          <span>👤</span> Mi Perfil
+    <nav class="sidebar-nav">
+      @for (item of menuItems; track item.route) {
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          class="nav-item"
+        >
+          <img [src]="item.icon" [alt]="item.label" class="nav-icon" />
+          <span>{{ item.label }}</span>
         </a>
       }
     </nav>
-
-    <div class="sidebar-footer">
-      <div class="support-card">
-        <div class="support-title">♡ Soporte Divinas</div>
-        <p class="support-text">¿Necesitas ayuda con un crédito o cálculo financiero?</p>
-        <button type="button" class="btn-secondary btn-full" (click)="toggleAyuda()">
-          Guía rápida de uso
-        </button>
-      </div>
-      <div class="privacy-note">🛡 Datos protegidos y privados</div>
-    </div>
   </aside>
 
-  <!-- Contenido Principal -->
-  <div class="main-area">
-    <header class="topbar">
+  <!-- Columna Derecha: Cabecera Oscura + Contenido + Pie de Página -->
+  <div class="main-column">
+    <!-- Barra Superior Oscura -->
+    <header class="topbar-dark">
       <div class="topbar-left">
-        <h2 class="store-title">
-          {{ tiendaActual?.nombreTienda || 'DivinasPay Plataforma' }}
-        </h2>
-        @if (tiendaActual && tiendaActual.direccion) {
-          <span class="store-badge">📍 {{ tiendaActual.direccion }}</span>
-        }
-        <span class="panel-tag">
-          {{ sesion?.rol === 'CLIENTE' ? 'PANEL DE PAGOS' : 'PANEL ADMINISTRATIVO' }}
+        <span class="store-title">{{ nombreTiendaActual }}</span>
+
+        <span class="store-address-pill">
+          <svg viewBox="0 0 24 24" class="pin-icon" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          <span>{{ direccionTiendaActual }}</span>
         </span>
+
+        <span class="panel-tag">PANEL DE PAGOS</span>
       </div>
 
+      <!-- Menú Desplegable del Usuario -->
       <div class="topbar-right">
-        <div class="user-pill">
-          <div class="user-avatar">{{ inicialesUsuario }}</div>
-          <div class="user-meta">
-            <span class="user-name">{{ sesion?.nombre }}</span>
-            <span class="user-role">{{ etiquetaRol }}</span>
-          </div>
+        <div class="user-menu-wrapper">
+          <button
+            type="button"
+            class="user-dropdown-trigger"
+            (click)="toggleMenuUsuario($event)"
+            [attr.aria-expanded]="menuUsuarioAbierto"
+          >
+            <span class="user-avatar">{{ inicialesUsuario }}</span>
+            <div class="user-meta">
+              <span class="user-name">{{ sesion?.nombre || 'Cliente DivinasPay' }}</span>
+              <span class="user-role">{{ etiquetaRol }}</span>
+            </div>
+            <svg
+              viewBox="0 0 24 24"
+              class="chevron-icon"
+              [class.rotated]="menuUsuarioAbierto"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          @if (menuUsuarioAbierto) {
+            <div class="user-dropdown-menu" (click)="$event.stopPropagation()">
+              <button type="button" class="dropdown-item" (click)="irAEditarPerfil()">
+                <img src="assets/icons/menu-perfil.png" alt="Editar perfil" class="dropdown-icon" />
+                <span>Editar perfil</span>
+              </button>
+
+              <div class="dropdown-divider"></div>
+
+              <button type="button" class="dropdown-item danger" (click)="cerrarSesion()">
+                <svg viewBox="0 0 24 24" class="dropdown-svg" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span>Cerrar sesión</span>
+              </button>
+            </div>
+          }
         </div>
-        <button type="button" class="btn-secondary" (click)="cerrarSesion()">
-          Salir
-        </button>
       </div>
     </header>
 
-    <main class="content-container">
+    <!-- Área Central de Vistas -->
+    <main class="content-area">
       <router-outlet></router-outlet>
     </main>
+
+    <!-- Pie de Página -->
+    <footer class="dp-footer">
+      <div class="footer-left">
+        <span class="footer-phone">
+          <svg viewBox="0 0 24 24" class="footer-svg" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+          </svg>
+          <span>Central: (01) 640-9800</span>
+        </span>
+
+        <span class="footer-sep">|</span>
+
+        <a routerLink="/ubicar-tiendas" class="footer-work-link">Trabaja con nosotros</a>
+      </div>
+
+      <div class="footer-center">
+        <svg viewBox="0 0 24 24" class="footer-svg" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M14.83 14.83a4 4 0 1 1 0-5.66" />
+        </svg>
+        <span>2026 DivinasPay. Todos los derechos reservados.</span>
+      </div>
+
+      <div class="footer-socials">
+        <a href="https://www.tiktok.com" target="_blank" rel="noopener" aria-label="TikTok" class="social-link">
+          <img src="assets/icons/tiktok.png" alt="TikTok" class="social-png" />
+        </a>
+        <a href="https://www.instagram.com" target="_blank" rel="noopener" aria-label="Instagram" class="social-link">
+          <img src="assets/icons/instagram.png" alt="Instagram" class="social-png" />
+        </a>
+        <a href="https://www.facebook.com" target="_blank" rel="noopener" aria-label="Facebook" class="social-link">
+          <img src="assets/icons/facebook.png" alt="Facebook" class="social-png" />
+        </a>
+      </div>
+    </footer>
   </div>
 </div>
-
-<!-- Modal de Ayuda y Asistencia Técnica (Requerimiento del Enunciado) -->
-@if (mostrarAyuda) {
-  <div class="modal-backdrop" (click)="toggleAyuda()">
-    <div class="dp-card modal-box" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Guía de Uso y Reglas Financieras — DivinasPay</h3>
-        <button type="button" class="btn-secondary" (click)="toggleAyuda()">✕</button>
-      </div>
-      <div class="help-body">
-        <p><strong>1. Base de cálculo comercial:</strong> Año de 360 días y mes de 30 días.</p>
-        <p><strong>2. Período de gracia:</strong> Si la compra se realiza hasta el día de corte, el primer ciclo vence en el día de pago del mismo mes; si es posterior al corte, pasa al mes siguiente.</p>
-        <p><strong>3. Método Francés Vencido:</strong> Las compras "En meses" capitalizan los días de gracia y generan cuotas fijas constantes (interés decreciente y amortización creciente).</p>
-        <p><strong>4. Orden de pago:</strong> Las cuotas deben pagarse de forma secuencial (cuota 1, luego cuota 2, etc.) sin exceder la línea de crédito disponible del cliente.</p>
-      </div>
-    </div>
-  </div>
-}

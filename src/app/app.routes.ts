@@ -11,15 +11,31 @@ import { DetalleCreditoComponent } from './components/detalle-credito/detalle-cr
 import { TiendasComponent } from './components/tiendas/tiendas.component';
 import { ConfiguracionComponent } from './components/configuracion/configuracion.component';
 import { AuditoriaComponent } from './components/auditoria/auditoria.component';
+import { ObtenerCuentaComponent } from './components/obtener-cuenta/obtener-cuenta.component';
+import { NovedadesComponent } from './components/novedades/novedades.component';
+import { UbicarTiendasComponent } from './components/ubicar-tiendas/ubicar-tiendas.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'login', component: LoginComponent },
+  { path: 'registro', component: ObtenerCuentaComponent },
   {
     path: '',
     component: LayoutComponent,
     canActivate: [authGuard],
     children: [
+      {
+        path: 'novedades',
+        component: NovedadesComponent,
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN_TIENDA', 'CLIENTE'] }
+      },
+      {
+        path: 'ubicar-tiendas',
+        component: UbicarTiendasComponent,
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN_TIENDA', 'CLIENTE'] }
+      },
       {
         path: 'dashboard',
         component: DashboardComponent,

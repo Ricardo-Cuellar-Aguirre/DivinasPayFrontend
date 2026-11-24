@@ -1,60 +1,63 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import {
-  limpiarSesionAlmacenada,
-  obtenerSesionAlmacenada,
-  SESSION_STORAGE_KEY,
-  SesionAlmacenada
-} from '../interceptor/auth.interceptor';
-import {
-  LoginRequestDTO,
-  LoginResponseDTO,
-  TiendaPublicaDTO
-} from '../models/auth.model';
+import { SesionAlmacenada } from '../interceptor/auth.interceptor';
+import { LoginRequestDTO, LoginResponseDTO } from '../models/auth.model';
+import { TiendaPublicaDTO } from '../models/tienda.model';
+
+const CLAVE_SESION = 'divinaspay_sesion';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
-  private readonly router = inject(Router);
-  private readonly baseUrl = `${environment.apiUrl}/auth`;
+  private readonly apiUrl = `${environment.apiUrl}/auth`;
 
-  private readonly sesionSubject = new BehaviorSubject<SesionAlmacenada | null>(
-    obtenerSesionAlmacenada()
-  );
-  readonly sesion$ = this.sesionSubject.asObservable();
-
-  get sesionActual(): SesionAlmacenada | null {
-    return this.sesionSubject.value;
-  }
-
-  login(dto: LoginRequestDTO, recordarAcceso = false): Observable<LoginResponseDTO> {
-    return this.http.post<LoginResponseDTO>(`${this.baseUrl}/login`, dto).pipe(
-      tap((respuesta) => {
+  login(dto: LoginRequestDTO): Observable<LoginResponseDTO> {
+    return this.http.post<LoginResponseDTO>(`${this.apiUrl}/login`, dto).pipe(
+      tap((resp) => {
         const sesion: SesionAlmacenada = {
-          ...respuesta,
-          expiraEnTimestamp: Date.now() + respuesta.expiraEnSegundos * 1000
+          token: resp.token,
+          tipoToken: resp.tipoToken,
+          rol: resp.rol,
+          idTienda: resp.idTienda,
+          idCliente: resp.idCliente,
+          nombre: resp.nombre,
+          expiraEnSegundos: resp.expiraEnSegundos,
+          expiraEnTimestamp: Date.now() + resp.expiraEnSegundos * 1000
         };
-
-        limpiarSesionAlmacenada();
-        const storage = recordarAcceso ? localStorage : sessionStorage;
-        storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sesion));
-        this.sesionSubject.next(sesion);
+        localStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));
       })
     );
   }
 
   listarTiendasPublicas(): Observable<TiendaPublicaDTO[]> {
-    return this.http.get<TiendaPublicaDTO[]>(`${this.baseUrl}/tiendas`);
+    return this.http.get<TiendaPublicaDTO[]>(`${this.apiUrl}/tiendas`);
   }
 
   cerrarSesion(): void {
-    limpiarSesionAlmacenada();
-    this.sesionSubject.next(null);
-    this.router.navigate(['/login']);
+    localStorage.removeItem(CLAVE_SESION);
+  }
+
+  get sesionActual(): SesionAlmacenada | null {
+    const raw = localStorage.getItem(CLAVE_SESION);
+    if (!raw) return null;
+    try {
+      const sesion = JSON.parse(raw) as SesionAlmacenada;
+      if (sesion.expiraEnTimestamp && Date.now() > sesion.expiraEnTimestamp) {
+        this.cerrarSesion();
+        return null;
+      }
+      return sesion;
+    } catch {
+      this.cerrarSesion();
+      return null;
+    }
+  }
+
+  estaAutenticado(): boolean {
+    return this.sesionActual !== null;
   }
 }

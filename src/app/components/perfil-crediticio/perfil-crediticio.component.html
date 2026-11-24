@@ -1,325 +1,288 @@
-<div class="perfil-crediticio-page">
-  <div class="page-header">
-    <div>
-      <div class="breadcrumb">Créditos &gt; Perfil del Cliente</div>
-      <h1 class="page-title">Perfil crediticio del cliente</h1>
-    </div>
-
-    <!-- Selector rápido si entra el ADMIN_TIENDA desde el menú lateral -->
-    @if (esAdminTienda && listaClientesTienda.length > 0) {
-      <div class="client-switcher">
-        <label for="selectCli">Cliente:</label>
-        <select
-          id="selectCli"
-          class="form-control"
-          [ngModel]="idCliente"
-          (ngModelChange)="cambiarClienteSeleccionado($event)"
-        >
-          @for (cli of listaClientesTienda; track cli.idCliente) {
-            <option [ngValue]="cli.idCliente">
-              {{ cli.nombreCliente }} (&#64;{{ cli.usuarioCliente }})
-            </option>
-          }
-        </select>
-      </div>
-    }
-  </div>
-
-  @if (mensajeExito) {
-    <div class="alert-success">{{ mensajeExito }}</div>
-  }
-  @if (mensajeError) {
-    <div class="alert-error">{{ mensajeError }}</div>
-  }
+<section class="perfil-credito-page">
+  <div class="top-breadcrumb">Mis Compras &gt; Perfil del Cliente</div>
+  <h1 class="page-title">Perfil crediticio del cliente</h1>
 
   @if (cargando) {
-    <div class="dp-card empty-state">Cargando estado de cuenta y línea de crédito...</div>
-  } @else if (!cliente || !estadoCuenta) {
-    <div class="dp-card empty-state">
-      No hay clientes activos registrados en la tienda para consultar créditos.
-    </div>
+    <div class="loading-box">Cargando estado de cuenta y línea de crédito...</div>
   } @else {
-    <!-- Fila Superior: Línea de Crédito + Parámetros y Configuración -->
-    <div class="top-credit-grid">
-      <!-- Tarjeta Izquierda: Línea de Crédito -->
-      <div class="dp-card">
-        <div class="client-banner">
-          <div class="client-ident">
-            <div class="big-avatar">{{ cliente.nombreCliente.slice(0, 2).toUpperCase() }}</div>
+    <!-- Fila Superior: Perfil del Cliente + Parámetros y Configuración -->
+    <div class="summary-grid">
+      <!-- Cuadro Izquierda -->
+      <div class="panel-card">
+        <div class="client-header">
+          <div class="client-info">
+            <div class="avatar-circle">
+              <svg viewBox="0 0 24 24" class="user-svg" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M5 20v-1a7 7 0 0 1 14 0v1" />
+              </svg>
+            </div>
             <div>
               <h2 class="client-name">{{ cliente.nombreCliente }}</h2>
-              <span class="field-hint">&#64;{{ cliente.usuarioCliente }} · Moneda: {{ cliente.moneda }}</span>
+              <span class="client-username">&#64;{{ cliente.usuarioCliente }}</span>
             </div>
           </div>
-          <span class="badge badge-warning">
-            {{ cliente.estado ? 'Cliente Calificado' : 'Inactivo' }}
+
+          <span class="qualified-badge">
+            <svg viewBox="0 0 24 24" class="badge-svg" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+            <span>Cliente Frecuente / Calificado</span>
           </span>
         </div>
 
-        <div class="credit-boxes">
-          <div class="c-box">
-            <span class="c-box-label">Línea de Crédito Máxima</span>
-            <strong class="c-box-val">S/ {{ estadoCuenta.limiteMaxCredito | number: '1.2-2' }}</strong>
+        <div class="credit-metrics-grid">
+          <div class="metric-box">
+            <span class="metric-label">Línea de Crédito Máxima</span>
+            <span class="metric-value">S/ {{ cliente.limiteMaxCredito | number: '1.2-2' }}</span>
           </div>
-          <div class="c-box">
-            <span class="c-box-label">Crédito Utilizado</span>
-            <strong class="c-box-val">S/ {{ estadoCuenta.saldoPendienteTotal | number: '1.2-2' }}</strong>
+
+          <div class="metric-box">
+            <span class="metric-label">Crédito Utilizado</span>
+            <span class="metric-value">S/ {{ creditoUtilizado | number: '1.2-2' }}</span>
           </div>
-          <div class="c-box c-box-green">
-            <span class="c-box-label">Disponible</span>
-            <strong class="c-box-val">S/ {{ estadoCuenta.limiteDisponible | number: '1.2-2' }}</strong>
+
+          <div class="metric-box available">
+            <span class="metric-label">Disponible</span>
+            <span class="metric-value green">S/ {{ creditoDisponible | number: '1.2-2' }}</span>
           </div>
         </div>
 
-        <div class="utilization-row">
-          <div class="util-labels">
+        <div class="usage-section">
+          <div class="usage-labels">
             <span>Utilización de la línea de crédito</span>
-            <strong>{{ porcentajeUtilizacion }}%</strong>
+            <strong>{{ porcentajeUtilizado | number: '1.2-2' }}%</strong>
           </div>
           <div class="progress-track">
-            <div class="progress-fill" [style.width.%]="porcentajeUtilizacion"></div>
+            <div class="progress-fill" [style.width.%]="porcentajeUtilizado"></div>
           </div>
         </div>
       </div>
 
-      <!-- Tarjeta Derecha: Parámetros y Configuración -->
-      <div class="dp-card">
-        <h3 class="params-title">⚙ Parámetros y configuración</h3>
+      <!-- Cuadro Derecha: Parámetros y Configuración -->
+      <div class="panel-card">
+        <div class="params-header">
+          <svg viewBox="0 0 24 24" class="params-svg" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="21" x2="4" y2="14" />
+            <line x1="4" y1="10" x2="4" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12" y2="3" />
+            <line x1="20" y1="21" x2="20" y2="16" />
+            <line x1="20" y1="12" x2="20" y2="3" />
+            <line x1="1" y1="14" x2="7" y2="14" />
+            <line x1="9" y1="8" x2="15" y2="8" />
+            <line x1="17" y1="16" x2="23" y2="16" />
+          </svg>
+          <h2 class="params-title">Parámetros y configuración</h2>
+        </div>
+
         <div class="params-grid">
           <div class="param-item">
             <span class="param-label">Tipo de Tasa</span>
-            <strong>{{ cliente.tipoTasa }}</strong>
+            <strong class="param-value">{{ etiquetaTipoTasa }}</strong>
           </div>
+
           <div class="param-item">
             <span class="param-label">Tasa de Interés</span>
-            <strong>{{ cliente.tasaInteres | number: '1.2-4' }}%</strong>
+            <strong class="param-value">{{ cliente.tasaInteres | number: '1.2-2' }}%</strong>
           </div>
+
           <div class="param-item">
             <span class="param-label">Máximo Meses Crédito</span>
-            <strong>{{ cliente.maxMesesCredito }} meses</strong>
+            <strong class="param-value">{{ cliente.maxMesesCredito }} meses</strong>
           </div>
+
           <div class="param-item">
             <span class="param-label">Día de Corte</span>
-            <strong>Día {{ cliente.fechaCorte }}</strong>
+            <strong class="param-value">Día {{ cliente.fechaCorte | number: '2.0-0' }}</strong>
           </div>
+
           <div class="param-item">
             <span class="param-label">Día de Pago</span>
-            <strong>Día {{ cliente.fechaPago }}</strong>
+            <strong class="param-value">Día {{ cliente.fechaPago | number: '2.0-0' }}</strong>
           </div>
+
           <div class="param-item">
             <span class="param-label">Método de Cálculo</span>
-            <strong>Francés (Cuotas Constantes)</strong>
+            <strong class="param-value">Francés (Cuotas constantes)</strong>
           </div>
         </div>
-        @if (cliente.capitalizacion) {
-          <div class="field-hint" style="margin-top: 0.75rem;">
-            Capitalización nominal pactada: <strong>{{ cliente.capitalizacion }}</strong> (Base 360 días).
-          </div>
-        }
+
+        <div class="params-footnote">
+          <svg viewBox="0 0 24 24" class="info-mini-svg" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <span>Condiciones aplicables a nuevos créditos del cliente.</span>
+        </div>
       </div>
     </div>
 
-    <!-- Barra de Pestañas + Botón Otorgar / Simular Crédito -->
-    <div class="tabs-toolbar">
-      <div class="tabs-group">
-        <button
-          type="button"
-          class="tab-btn"
-          [class.active]="tabActiva === 'activos'"
-          (click)="tabActiva = 'activos'"
-        >
-          Créditos Activos
-          <span class="tab-count">{{ creditosActivos.length }}</span>
-        </button>
-        <button
-          type="button"
-          class="tab-btn"
-          [class.active]="tabActiva === 'historial'"
-          (click)="tabActiva = 'historial'"
-        >
-          Historial de Compras ({{ historialCompras.length }})
-        </button>
-        <button
-          type="button"
-          class="tab-btn"
-          [class.active]="tabActiva === 'corte'"
-          (click)="tabActiva = 'corte'"
-        >
-          Listado de Pago (Corte)
-        </button>
-      </div>
+    <!-- Pestañas -->
+    <div class="tabs-bar">
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="tabActiva === 'ACTIVOS'"
+        (click)="cambiarTab('ACTIVOS')"
+      >
+        <span>Créditos Activos</span>
+        <span class="tab-count">{{ creditosActivos.length }}</span>
+      </button>
 
-      <button type="button" class="btn-primary" (click)="abrirModalCredito()">
-        {{ esAdminTienda ? '+ Otorgar Nuevo Crédito' : '🧮 Simular Nuevo Crédito' }}
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="tabActiva === 'HISTORIAL'"
+        (click)="cambiarTab('HISTORIAL')"
+      >
+        <span>Historial de Compras</span>
+        <span class="tab-count">{{ historialCompleto.length }}</span>
       </button>
     </div>
 
-    <!-- Contenido Tab 1: Créditos Activos -->
-    @if (tabActiva === 'activos') {
+    <!-- PESTAÑA 1: CRÉDITOS ACTIVOS -->
+    @if (tabActiva === 'ACTIVOS') {
       @if (creditosActivos.length === 0) {
-        <div class="dp-card empty-state">
-          Este cliente no tiene créditos activos pendientes de pago.
+        <div class="empty-tab-box">
+          No tienes compras financiadas en meses activas actualmente.
         </div>
       } @else {
-        <div class="credits-cards-list">
-          @for (comp of creditosActivos; track comp.idCompra) {
-            <div class="dp-card active-credit-card">
-              <div class="ac-main">
-                <div class="ac-header">
-                  <div>
-                    <h3 class="ac-title">{{ comp.descripcionProducto }}</h3>
-                    <span class="field-hint">
-                      Compra #{{ comp.idCompra }} · Fecha: {{ comp.fechaCompra }} · {{ comp.formaPago }} ({{ comp.cuotasTotales }} cuotas)
-                    </span>
-                  </div>
-                  <span class="badge badge-success">● En curso</span>
-                </div>
+        <div class="credits-list">
+          @for (credito of creditosActivos; track credito.idCompra) {
+            <article class="credit-item-card">
+              <div class="credit-main-section">
+                <img
+                  src="assets/images/logo-principal.png"
+                  [alt]="credito.nombreProducto"
+                  class="credit-thumb"
+                />
 
-                <div class="ac-metrics">
-                  <div>
-                    <span class="c-box-label">Precio lista financiado</span>
-                    <strong>S/ {{ comp.monto | number: '1.2-2' }}</strong>
+                <div class="credit-details">
+                  <div class="credit-title-row">
+                    <div>
+                      <h3 class="credit-title">{{ credito.nombreProducto }}</h3>
+                      <p class="credit-desc">{{ credito.descripcion }}</p>
+                    </div>
+                    <span class="status-course-pill">• En curso</span>
                   </div>
-                  <div>
-                    <span class="c-box-label">Cuota fija mensual</span>
-                    <strong>
-                      {{ comp.cuotaAPagar ? ('S/ ' + (comp.cuotaAPagar | number: '1.2-2')) : '-' }}
-                    </strong>
-                  </div>
-                  <div>
-                    <span class="c-box-label">Saldo pendiente</span>
-                    <strong>S/ {{ comp.saldoPendiente | number: '1.2-2' }}</strong>
-                  </div>
-                </div>
 
-                <div class="ac-progress">
-                  <span>{{ comp.cuotasPagadas }} de {{ comp.cuotasTotales }} pagadas</span>
-                  <span>{{ comp.cuotasTotales - comp.cuotasPagadas }} cuotas restantes</span>
+                  <div class="credit-amounts-row">
+                    <div class="amount-col">
+                      <span class="amount-label">Monto total financiado</span>
+                      <strong class="amount-val">S/ {{ credito.montoTotalFinanciado | number: '1.2-2' }}</strong>
+                    </div>
+
+                    <div class="amount-col">
+                      <span class="amount-label">Cuota fija mensual</span>
+                      <strong class="amount-val">S/ {{ credito.cuotaFijaMensual | number: '1.2-2' }}</strong>
+                    </div>
+
+                    <div class="amount-col">
+                      <span class="amount-label">Capital pendiente</span>
+                      <strong class="amount-val green">S/ {{ credito.capitalPendiente | number: '1.2-2' }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="installments-progress">
+                    <div class="installments-labels">
+                      <strong>{{ credito.cuotasPagadas }} de {{ credito.totalCuotas }} pagadas</strong>
+                      <span>{{ credito.cuotasRestantes }} cuotas restantes</span>
+                    </div>
+                    <div class="progress-track">
+                      <div
+                        class="progress-fill"
+                        [style.width.%]="credito.totalCuotas > 0 ? (credito.cuotasPagadas / credito.totalCuotas) * 100 : 0"
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div class="ac-next-box">
-                <span class="c-box-label">Próximo vencimiento</span>
-                <strong class="next-date">{{ comp.fechaProximoPago || 'Sin fecha' }}</strong>
-                <span class="field-hint">
-                  Cuota {{ comp.cuotasPagadas + 1 }} de {{ comp.cuotasTotales }}
-                </span>
-                <a
-                  [routerLink]="['/creditos', idCliente, comp.idCompra]"
-                  class="btn-secondary btn-full"
-                  style="margin-top: 0.75rem; text-decoration: none;"
-                >
-                  ↗ Ver detalle del crédito
-                </a>
+              <!-- Derecha: Únicamente Fecha de vencimiento, Número de cuota y Monto -->
+              <div class="credit-next-due-box">
+                <div class="due-field">
+                  <span class="due-label">Fecha de vencimiento</span>
+                  <strong class="due-date">{{ credito.fechaVencimientoProxima }}</strong>
+                </div>
+
+                <div class="due-field">
+                  <span class="due-label">Número de cuota</span>
+                  <strong class="due-value">
+                    Cuota {{ credito.numeroCuotaProxima }} de {{ credito.totalCuotas }}
+                  </strong>
+                </div>
+
+                <div class="due-field">
+                  <span class="due-label">Monto</span>
+                  <strong class="due-amount">S/ {{ credito.montoCuotaProxima | number: '1.2-2' }}</strong>
+                </div>
               </div>
-            </div>
+            </article>
           }
         </div>
       }
     }
 
-    <!-- Contenido Tab 2: Historial Completo de Compras -->
-    @if (tabActiva === 'historial') {
-      <div class="dp-card">
-        @if (historialCompras.length === 0) {
-          <div class="empty-state">No existen compras registradas para este cliente.</div>
-        } @else {
-          <div class="table-responsive">
-            <table class="dp-table">
-              <thead>
-                <tr>
-                  <th># Compra</th>
-                  <th>Producto / Servicio</th>
-                  <th>Fecha</th>
-                  <th>Modalidad</th>
-                  <th>Monto Lista</th>
-                  <th>Progreso</th>
-                  <th>Saldo</th>
-                  <th>Detalle</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (h of historialCompras; track h.idCompra) {
-                  <tr>
-                    <td>#{{ h.idCompra }}</td>
-                    <td><strong>{{ h.descripcionProducto }}</strong></td>
-                    <td>{{ h.fechaCompra }}</td>
-                    <td>{{ h.formaPago }}</td>
-                    <td>S/ {{ h.monto | number: '1.2-2' }}</td>
-                    <td>{{ h.cuotasPagadas }} / {{ h.cuotasTotales }}</td>
-                    <td>
-                      @if (h.saldoPendiente > 0) {
-                        <span class="badge badge-warning">S/ {{ h.saldoPendiente | number: '1.2-2' }}</span>
-                      } @else {
-                        <span class="badge badge-success">Liquidado</span>
-                      }
-                    </td>
-                    <td>
-                      <a
-                        [routerLink]="['/creditos', idCliente, h.idCompra]"
-                        class="btn-secondary btn-xs"
-                        style="text-decoration: none;"
-                      >
-                        Cronograma
-                      </a>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
-      </div>
-    }
+    <!-- PESTAÑA 2: HISTORIAL DE COMPRAS -->
+    @if (tabActiva === 'HISTORIAL') {
+      <div class="history-card">
+        <div class="history-filter-bar">
+          <span class="history-heading">Compras canceladas</span>
 
-    <!-- Contenido Tab 3: Listado de Pago en Fecha de Corte -->
-    @if (tabActiva === 'corte' && listadoCorte) {
-      <div class="dp-card">
-        <div class="card-top">
-          <div>
-            <h3>Estado de cuenta del próximo corte (Día {{ listadoCorte.fechaCorte }})</h3>
-            <p class="field-hint">
-              Fecha de pago programada: <strong>{{ listadoCorte.fechaPago || 'Sin cuotas pendientes' }}</strong>
-            </p>
-          </div>
-          <div class="corte-badges">
-            <span class="badge badge-neutral">
-              Intereses acumulados: S/ {{ listadoCorte.totalInteresesAcumulados | number: '1.2-2' }}
-            </span>
-            <span class="badge badge-success">
-              Total a pagar: S/ {{ listadoCorte.totalAPagar | number: '1.2-2' }}
-            </span>
+          <div class="history-filters">
+            <select
+              [(ngModel)]="mesSeleccionado"
+              (change)="filtrarHistorial()"
+              class="history-select"
+              aria-label="Filtrar por mes"
+            >
+              <option value="">Todos los meses</option>
+              @for (m of meses; track m.valor) {
+                <option [value]="m.valor">{{ m.nombre }}</option>
+              }
+            </select>
+
+            <select
+              [(ngModel)]="anioSeleccionado"
+              (change)="filtrarHistorial()"
+              class="history-select"
+              aria-label="Filtrar por año"
+            >
+              <option value="">Todos los años</option>
+              @for (a of aniosDisponibles; track a) {
+                <option [value]="a">{{ a }}</option>
+              }
+            </select>
           </div>
         </div>
 
-        @if (listadoCorte.detalle.length === 0) {
-          <div class="empty-state">No hay cuotas programadas para el ciclo actual.</div>
+        @if (historialFiltrado.length === 0) {
+          <div class="empty-history">
+            No se encontraron compras canceladas en el período seleccionado.
+          </div>
         } @else {
           <div class="table-responsive">
-            <table class="dp-table">
+            <table class="history-table">
               <thead>
                 <tr>
-                  <th>Fecha Compra</th>
-                  <th>Servicio / Producto</th>
-                  <th>Modalidad</th>
-                  <th>Cuota</th>
-                  <th>Días Gracia</th>
-                  <th>Int. Gracia</th>
-                  <th>Int. Cuota</th>
-                  <th>Total Cuota</th>
+                  <th>Nombre producto</th>
+                  <th>Fecha de compra</th>
+                  <th>Número de recibo</th>
+                  <th>Cantidad comprada</th>
+                  <th>Monto total</th>
                 </tr>
               </thead>
               <tbody>
-                @for (item of listadoCorte.detalle; track item.idCompra + '-' + item.numeroCuota) {
+                @for (item of historialFiltrado; track item.idCompra) {
                   <tr>
+                    <td class="col-product">{{ item.nombreProducto }}</td>
                     <td>{{ item.fechaCompra }}</td>
-                    <td>{{ item.descripcionProducto }}</td>
-                    <td>{{ item.formaPago }}</td>
-                    <td>{{ item.numeroCuota }} / {{ item.cuotasTotales }}</td>
-                    <td>{{ item.diasGracia }} días</td>
-                    <td>S/ {{ item.interesGracia | number: '1.2-2' }}</td>
-                    <td>S/ {{ item.interesCuota | number: '1.2-2' }}</td>
-                    <td><strong>S/ {{ item.montoCuota | number: '1.2-2' }}</strong></td>
+                    <td><span class="receipt-badge">{{ item.numeroRecibo }}</span></td>
+                    <td>{{ item.cantidad }}</td>
+                    <td class="col-amount">S/ {{ item.montoTotal | number: '1.2-2' }}</td>
                   </tr>
                 }
               </tbody>
@@ -329,156 +292,4 @@
       </div>
     }
   }
-</div>
-
-<!-- Modal Otorgar / Simular Crédito -->
-@if (mostrarModalCredito) {
-  <div class="modal-backdrop" (click)="cerrarModalCredito()">
-    <div class="dp-card modal-wide" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div>
-          <h3>{{ esAdminTienda ? 'Otorgar Nuevo Crédito' : 'Simulador de Crédito' }}</h3>
-          <p class="field-hint">
-            Cálculo bajo método francés vencido (mes comercial de 30 días, año de 360 días)
-          </p>
-        </div>
-        <button type="button" class="btn-secondary" (click)="cerrarModalCredito()">✕</button>
-      </div>
-
-      @if (errorCredito) {
-        <div class="alert-error">{{ errorCredito }}</div>
-      }
-
-      <form [formGroup]="creditoForm">
-        <div class="sim-form-grid">
-          <div class="form-group">
-            <label for="prodSel">Producto o Servicio *</label>
-            <select id="prodSel" formControlName="idProductoServicio" class="form-control">
-              @for (prod of productosActivos; track prod.idProductoServicio) {
-                <option [ngValue]="prod.idProductoServicio">
-                  {{ prod.descripcion }} — Lista: S/ {{ prod.precioCredito | number: '1.2-2' }} ({{ prod.formaVenta }})
-                </option>
-              }
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="fechaCompra">Fecha de compra *</label>
-            <input
-              id="fechaCompra"
-              type="date"
-              formControlName="fechaCompra"
-              class="form-control"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="formaPago">Modalidad de pago *</label>
-            <select
-              id="formaPago"
-              formControlName="formaPago"
-              class="form-control"
-            >
-              <option value="En meses" [disabled]="productoSeleccionado?.formaVenta === 'Al contado'">
-                En meses (Cuotas fijas)
-              </option>
-              <option value="Unico pago">Unico pago (Fin de ciclo)</option>
-            </select>
-          </div>
-
-          @if (creditoForm.get('formaPago')?.value === 'En meses') {
-            <div class="form-group">
-              <label for="numMeses">Número de cuotas (Máx. {{ cliente?.maxMesesCredito }}) *</label>
-              <input
-                id="numMeses"
-                type="number"
-                min="1"
-                [max]="cliente?.maxMesesCredito || 36"
-                formControlName="numMeses"
-                class="form-control"
-              />
-            </div>
-          }
-        </div>
-
-        <div class="sim-actions">
-          <button
-            type="button"
-            class="btn-secondary"
-            (click)="simularCredito()"
-            [disabled]="simulando"
-          >
-            {{ simulando ? 'Calculando...' : '🧮 Simular Plan de Pagos' }}
-          </button>
-
-          @if (esAdminTienda) {
-            <button
-              type="button"
-              class="btn-primary"
-              (click)="confirmarOtorgarCredito()"
-              [disabled]="registrandoCompra"
-            >
-              {{ registrandoCompra ? 'Registrando...' : '✓ Confirmar y Otorgar Crédito' }}
-            </button>
-          }
-        </div>
-      </form>
-
-      <!-- Resultado de la Simulación -->
-      @if (simulacion) {
-        <div class="sim-result-box">
-          <div class="sim-kpis">
-            <div class="sim-kpi">
-              <span>Días de gracia</span>
-              <strong>{{ simulacion.diasGracia }} días (hasta {{ simulacion.fechaFinGracia }})</strong>
-            </div>
-            <div class="sim-kpi">
-              <span>Capital capitalizado</span>
-              <strong>S/ {{ simulacion.capitalCapitalizado | number: '1.2-2' }}</strong>
-            </div>
-            <div class="sim-kpi">
-              <span>Cuota fija mensual</span>
-              <strong>S/ {{ simulacion.cuotaFija | number: '1.2-2' }}</strong>
-            </div>
-            <div class="sim-kpi">
-              <span>TCEA / TEM</span>
-              <strong>
-                {{ (simulacion.tcea * 100) | number: '1.2-2' }}% /
-                {{ (simulacion.tasaEfectivaMensual * 100) | number: '1.2-4' }}%
-              </strong>
-            </div>
-          </div>
-
-          <div class="table-responsive" style="margin-top: 1rem;">
-            <table class="dp-table">
-              <thead>
-                <tr>
-                  <th>N°</th>
-                  <th>Vencimiento</th>
-                  <th>Saldo Inicial</th>
-                  <th>Cuota Fija</th>
-                  <th>Interés</th>
-                  <th>Amortización</th>
-                  <th>Saldo Final</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (fila of simulacion.cuotas; track fila.numero) {
-                  <tr>
-                    <td>{{ fila.numero }}</td>
-                    <td>{{ fila.fechaVencimiento }}</td>
-                    <td>S/ {{ fila.saldoInicial | number: '1.2-2' }}</td>
-                    <td><strong>S/ {{ fila.cuota | number: '1.2-2' }}</strong></td>
-                    <td>S/ {{ fila.interes | number: '1.2-2' }}</td>
-                    <td>S/ {{ fila.amortizacion | number: '1.2-2' }}</td>
-                    <td>S/ {{ fila.saldoFinal | number: '1.2-2' }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
-      }
-    </div>
-  </div>
-}
+</section>

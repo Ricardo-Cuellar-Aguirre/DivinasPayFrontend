@@ -1,0 +1,69 @@
+<section class="tiendas-page">
+  <!-- Encabezado (sin barra de búsqueda) -->
+  <div class="tiendas-header">
+    <div>
+      <h1 class="page-title">Mi Tienda</h1>
+      <p class="page-subtitle">
+        Tu cuenta se ha vinculado a la tienda <strong>{{ nombreTiendaAsignada }}</strong> y no puede modificarse.
+      </p>
+    </div>
+
+    @if (nombreTiendaAsignada) {
+      <div class="assigned-pill">
+        Tienda vinculada: <strong>{{ nombreTiendaAsignada }}</strong>
+      </div>
+    }
+  </div>
+
+  <!-- Grilla de Cartas (solo lectura; únicamente la tienda de la cuenta aparece seleccionada) -->
+  @if (cargando) {
+    <div class="state-card">Cargando tiendas...</div>
+  } @else if (errorCarga) {
+    <div class="state-card">{{ errorCarga }}</div>
+  } @else {
+    <div class="stores-grid">
+      @for (tienda of tiendas; track tienda.idTienda) {
+        <article
+          class="store-card"
+          [class.selected]="tienda.seleccionada"
+          [class.locked-other]="!tienda.seleccionada"
+          [attr.aria-selected]="tienda.seleccionada"
+        >
+          <div class="store-card-top">
+            <span class="store-badge" [class.active]="tienda.seleccionada">
+              {{ tienda.seleccionada ? 'Seleccionada · Tu tienda' : 'No disponible' }}
+            </span>
+
+            @if (tienda.seleccionada) {
+              <span class="check-circle" aria-label="Tienda seleccionada">✓</span>
+            }
+          </div>
+
+          <h2 class="store-name">{{ tienda.nombreTienda }}</h2>
+
+          @if (tienda.seleccionada) {
+            <div class="store-details">
+              @if (tienda.direccion) {
+                <p class="store-detail-line">
+                  <strong>Dirección:</strong> {{ tienda.direccion }}
+                </p>
+              }
+              @if (tienda.telefono) {
+                <p class="store-detail-line">
+                  <strong>Teléfono:</strong> {{ tienda.telefono }}
+                </p>
+              }
+              <p class="store-lock-note">
+                Esta tienda fue asignada al crear tu cuenta y no puede cambiarse.
+              </p>
+            </div>
+          } @else {
+            <p class="store-disabled-note">
+              Tu cuenta ya está vinculada a otra.
+            </p>
+          }
+        </article>
+      }
+    </div>
+  }
+</section>

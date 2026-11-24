@@ -1,155 +1,170 @@
-<div class="login-page">
-  <!-- Panel Izquierdo: Formulario -->
-  <div class="login-left">
-    <div class="login-box">
-      <div class="login-brand">
-        <div class="login-logo">DP</div>
-        <div>
-          <div class="login-brand-name">DivinasPay</div>
-          <div class="login-brand-tag">Pagos y belleza</div>
+<div class="login-split">
+
+  <div class="login-form-panel">
+    <div class="login-container">
+  
+      <div class="brand-header">
+        <img
+          src="assets/images/logo-divinas.png"
+          alt="DivinasPay"
+          class="brand-logo"
+        />
+        <div class="brand-text">
+          <span class="brand-name">DivinasPay</span>
+          <span class="brand-tagline">Pagos y belleza</span>
         </div>
       </div>
 
-      <h1 class="login-heading">Bienvenida a tu espacio de bienestar</h1>
-      <p class="login-subtitle">
-        Únete a la comunidad de DivinasPay, maneja, administra, solicita créditos y más.
+
+      <h1 class="hero-title">Bienvenida a tu espacio de bienestar</h1>
+      <p class="hero-subtitle">
+        Unete a la comunidad de divinasPay, maneja, administra, solicita creditos y mas.
       </p>
 
-      <!-- Selector de Tipo de Usuario (Backend: ADMIN | CLIENTE | SISTEMA) -->
-      <div class="role-tabs">
-        <button
-          type="button"
-          class="role-tab"
-          [class.active]="loginForm.get('tipo')?.value === 'ADMIN'"
-          (click)="seleccionarTipo('ADMIN')"
-        >
-          Negociante / Tienda
-        </button>
-        <button
-          type="button"
-          class="role-tab"
-          [class.active]="loginForm.get('tipo')?.value === 'CLIENTE'"
-          (click)="seleccionarTipo('CLIENTE')"
-        >
-          Cliente
-        </button>
-        <button
-          type="button"
-          class="role-tab"
-          [class.active]="loginForm.get('tipo')?.value === 'SISTEMA'"
-          (click)="seleccionarTipo('SISTEMA')"
-        >
-          Admin Sistema
-        </button>
-      </div>
-
-      @if (mensajeError) {
-        <div class="alert-error">{{ mensajeError }}</div>
+      @if (errorLogin) {
+        <div class="alert-error">{{ errorLogin }}</div>
       }
 
-      <form [formGroup]="loginForm" (ngSubmit)="iniciarSesion()">
-        <!-- Selector de Tienda (Obligatorio cuando tipo === 'CLIENTE') -->
-        @if (loginForm.get('tipo')?.value === 'CLIENTE') {
-          <div class="form-group">
-            <label for="idTienda">Salón / Establecimiento</label>
-            <select id="idTienda" formControlName="idTienda" class="form-control">
-              <option [ngValue]="null" disabled>Selecciona tu tienda o salón...</option>
-              @for (tienda of tiendasPublicas; track tienda.idTienda) {
-                <option [ngValue]="tienda.idTienda">{{ tienda.nombreTienda }}</option>
-              }
-            </select>
-            @if (
-              loginForm.get('idTienda')?.touched &&
-              loginForm.get('idTienda')?.hasError('required')
-            ) {
-              <span class="field-error">Debes seleccionar una tienda para ingresar como cliente.</span>
-            }
-          </div>
-        }
+      @if (infoMensaje) {
+        <div class="alert-info">{{ infoMensaje }}</div>
+      }
 
+
+      <form [formGroup]="loginForm" (ngSubmit)="iniciarSesion()">
         <div class="form-group">
-          <label for="usuario">Usuario o correo de acceso</label>
+          <label for="usuario">Correo electrónico</label>
           <input
             id="usuario"
             type="text"
             formControlName="usuario"
             class="form-control"
-            placeholder="Ej. admin_divinas o carlitos_69"
+            placeholder="nombre@spa.com"
+            autocomplete="username"
           />
-          @if (
-            loginForm.get('usuario')?.touched &&
-            loginForm.get('usuario')?.hasError('required')
-          ) {
-            <span class="field-error">El usuario es obligatorio.</span>
-          }
         </div>
 
         <div class="form-group">
           <label for="password">Contraseña</label>
-          <div class="password-wrapper">
+          <div class="password-wrap">
             <input
               id="password"
               [type]="mostrarPassword ? 'text' : 'password'"
               formControlName="password"
-              class="form-control"
-              placeholder="••••••••"
+              class="form-control password-input"
+    
+              autocomplete="current-password"
             />
             <button
               type="button"
-              class="toggle-pass-btn"
-              (click)="mostrarPassword = !mostrarPassword"
-              title="Mostrar u ocultar contraseña"
+              class="btn-eye"
+              (click)="toggleMostrarPassword()"
+              [attr.aria-label]="mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              [title]="mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
             >
-              {{ mostrarPassword ? '🙈' : '👁️' }}
+              <img
+                [src]="mostrarPassword ? 'assets/icons/eye-closed.png' : 'assets/icons/eye-open.png'"
+                [alt]="mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                class="icon-eye"
+              />
             </button>
           </div>
-          @if (
-            loginForm.get('password')?.touched &&
-            loginForm.get('password')?.hasError('required')
-          ) {
-            <span class="field-error">La contraseña es obligatoria.</span>
-          }
         </div>
-
-        <div class="login-options">
-          <label class="checkbox-label">
-            <input type="checkbox" formControlName="recordarAcceso" />
-            <span>Recordar acceso</span>
-          </label>
-          <button
-            type="button"
-            class="link-btn"
-            (click)="mostrarInfoRegistro = !mostrarInfoRegistro"
-          >
-            ¿Cómo obtener una cuenta?
-          </button>
-        </div>
-
-        @if (mostrarInfoRegistro) {
-          <div class="info-box">
-            Los comercios son registrados por el <strong>Administrador del Sistema</strong> y los clientes son dados de alta directamente por el <strong>Administrador de su tienda</strong> con su línea de crédito asignada.
-          </div>
-        }
 
         <button
           type="submit"
           class="btn-primary btn-submit"
           [disabled]="cargando"
         >
-          {{ cargando ? 'Validando acceso...' : 'Iniciar sesión' }}
+          {{ cargando ? 'Iniciando sesión...' : 'Iniciar sesión' }}
         </button>
-      </form>
-    </div>
-  </div>
 
-  <!-- Panel Derecho: Banner Visual -->
-  <div class="login-right">
-    <div class="visual-overlay">
-      <div class="visual-top-badge">🛡 Seguro y privado</div>
-      <div class="visual-bottom-bar">
-        <span>DivinasPay — Spa, estética y belleza</span>
-        <span>🎧 Soporte 24/7</span>
+   
+        <div class="options-row">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="recordarAcceso" />
+            <span>Recordar acceso</span>
+          </label>
+
+          <button
+            type="button"
+            class="forgot-btn"
+            (click)="onOlvidePassword()"
+          >
+            ¿Olvidaste tu contraseña?
+          </button>
+        </div>
+      </form>
+
+      <div class="divider-row">
+        <span>o continúa con</span>
+      </div>
+
+      <!-- Botones Google y Apple -->
+      <div class="social-grid">
+        <button
+          type="button"
+          class="social-btn"
+          (click)="onSocialLogin('Google')"
+        >
+          <img
+            src="assets/icons/logo-google.png"
+            alt="Google"
+            class="social-icon"
+          />
+          <span>Google</span>
+        </button>
+
+        <button
+          type="button"
+          class="social-btn"
+          (click)="onSocialLogin('Apple')"
+        >
+          <img
+            src="assets/icons/logo-apple.png"
+            alt="Apple"
+            class="social-icon"
+          />
+          <span>Apple</span>
+        </button>
+      </div>
+
+      <!-- Enlace a Registro -->
+      <div class="register-row">
+        <span>¿No tienes cuenta?</span>
+        <a routerLink="/registro" class="register-link">Regstrate aquí</a>
       </div>
     </div>
   </div>
-</div>
+
+
+  <div class="login-media-panel">
+    <img
+      src="assets/images/logo-principal.jpg"
+      alt="DivinasPay — Spa, estética y belleza"
+      class="media-bg-img"
+    />
+    <div class="media-overlay"></div>
+
+    <div class="media-top-bar">
+      <span class="trust-pill">
+        <svg viewBox="0 0 24 24" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+        <span>Seguro y privado</span>
+      </span>
+    </div>
+
+    <div class="media-bottom-bar">
+      <span class="media-caption">DivinasPay — Spa, estética y belleza</span>
+      <span class="media-support">
+        <img
+          src="assets/icons/soporte-icon.png"
+          alt="Soporte 24/7"
+          class="icon-support"
+        />
+        <span>Soporte 24/7</span>
+      </span>
+    </div>
+  </div>
+  </div>

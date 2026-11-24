@@ -1,216 +1,350 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators
-} from '@angular/forms';
-import { Router } from '@angular/router';
-import {
-  FormaVentaProducto,
-  ProductoServicioRequestDTO,
-  ProductoServicioResponseDTO
-} from '../../models/producto-servicio.model';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { ErrorResponse } from '../../models/sistema.model';
 import { AuthService } from '../../services/auth.service';
-import { ProductoServicioService } from '../../services/producto-servicio.service';
+import { TiendaActivaService } from '../../services/tienda-activa.service';
+
+export interface ItemCatalogo {
+  idProductoServicio: number;
+  descripcion: string;
+  marca: string;
+  tipo: string;
+  proveedor: string;
+  precioContado: number;
+  precioCredito: number;
+  modalidad: string;
+}
+
+export interface SimulacionRequestDTO {
+  fechaCompra: string;
+  monto: number;
+  formaPago: 'Unico pago' | 'En meses';
+  numMeses: number;
+}
+
+export interface FilaCuotaBackendDTO {
+  numero: number;
+  fechaVencimiento: string;
+  saldoInicial: number;
+  cuota: number;
+  interes: number;
+  amortizacion: number;
+  saldoFinal: number;
+}
+
+export interface SimulacionResponseDTO {
+  idCliente: number;
+  fechaCompra: string;
+  monto: number;
+  formaPago: string;
+  numMeses: number;
+  cuotaFija: number;
+  cuotas: FilaCuotaBackendDTO[];
+  totalCuotas: number;
+  totalIntereses: number;
+}
+
+export interface CuotaSimuladaVista {
+  numero: number;
+  fechaPago: string;
+  montoCuota: number;
+}
+
+export interface ResultadoSimulacionVista {
+  numCuotas: number;
+  cuotaFija: number;
+  montoTotal: number;
+  cronograma: CuotaSimuladaVista[];
+}
 
 @Component({
   selector: 'app-productos',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './productos.component.html',
   styleUrl: './productos.component.css'
 })
 export class ProductosComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
+  private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
-  private readonly productoService = inject(ProductoServicioService);
-  private readonly router = inject(Router);
+  private readonly tiendaActivaService = inject(TiendaActivaService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  idTienda!: number;
-  esAdminTienda = false;
-
-  productos: ProductoServicioResponseDTO[] = [];
-  filtroTexto = '';
-  soloActivos = true;
+  catalogoCompleto: ItemCatalogo[] = [];
+  catalogoFiltrado: ItemCatalogo[] = [];
+  marcasDisponibles: string[] = [];
 
   cargando = true;
-  guardando = false;
-  mostrarModal = false;
-  productoEditando: ProductoServicioResponseDTO | null = null;
+  textoBusqueda = '';
+  marcaSeleccionada = '';
+  precioMinimo: number | null = null;
+  tipoSeleccionado = '';
 
-  mensajeExito: string | null = null;
-  mensajeError: string | null = null;
-  errorFormulario: string | null = null;
+  // Modal de compra y simulación
+  productoAComprar: ItemCatalogo | null = null;
+  modalidadCompra: 'CONTADO' | 'CREDITO' = 'CREDITO';
+  compraConfirmada = false;
 
-  productoForm!: FormGroup;
+  // Campos del simulador de cuotas
+  numCuotasSimulacion: number | null = 3;
+  fechaPrimerPagoSimulacion = '';
+  simulando = false;
+  errorSimulacion: string | null = null;
+  resultadoSimulacion: ResultadoSimulacionVista | null = null;
 
   ngOnInit(): void {
-    const sesion = this.authService.sesionActual;
-    if (!sesion?.idTienda) {
-      this.router.navigate(['/login']);
-      return;
-    }
-
-    this.idTienda = sesion.idTienda;
-    this.esAdminTienda = sesion.rol === 'ADMIN_TIENDA';
-    this.inicializarFormulario();
-    this.cargarProductos();
-  }
-
-  private inicializarFormulario(): void {
-    this.productoForm = this.fb.group({
-      descripcion: ['', [Validators.required, Validators.maxLength(150)]],
-      marca: ['', [Validators.maxLength(50)]],
-      proveedor: ['', [Validators.maxLength(80)]],
-      unidadMedida: ['Servicio', [Validators.required, Validators.maxLength(20)]],
-      imagen: ['', [Validators.maxLength(255)]],
-      precioContado: [null, [Validators.required, Validators.min(0.01)]],
-      precioCredito: [null, [Validators.required, Validators.min(0.01)]],
-      formaVenta: ['En meses' as FormaVentaProducto, [Validators.required]]
+    this.tiendaActivaService.tiendaActiva$.subscribe((tienda) => {
+      const idTienda = tienda?.idTienda ?? this.authService.sesionActual?.idTienda ?? 1;
+      this.cargarProductosPorTienda(idTienda);
     });
   }
 
-  cargarProductos(): void {
+  private cargarProductosPorTienda(idTienda: number): void {
     this.cargando = true;
-    const consultarSoloActivos = this.esAdminTienda ? false : true;
+    this.cdr.detectChanges();
 
-    this.productoService.listar(this.idTienda, consultarSoloActivos).subscribe({
-      next: (lista) => {
-        this.productos = lista;
+    this.http.get<any[]>(`${environment.apiUrl}/tiendas/${idTienda}/productos`).subscribe({
+      next: (data) => {
+        this.catalogoCompleto = (data || []).map((item, idx) => this.normalizarItem(item, idx));
+        this.extraerMarcas();
+        this.aplicarFiltros();
         this.cargando = false;
+        this.cdr.detectChanges();
       },
-      error: (err: HttpErrorResponse) => {
+      error: () => {
+        this.catalogoCompleto = [];
+        this.catalogoFiltrado = [];
         this.cargando = false;
-        const body = err.error as ErrorResponse | undefined;
-        this.mensajeError = body?.mensaje || 'No se pudo cargar el catálogo de productos.';
+        this.cdr.detectChanges();
       }
     });
   }
 
-  get productosFiltrados(): ProductoServicioResponseDTO[] {
-    const q = this.filtroTexto.trim().toLowerCase();
-    return this.productos.filter((p) => {
-      const coincideEstado = this.soloActivos ? p.estado : true;
-      const coincideTexto =
-        !q ||
-        p.descripcion.toLowerCase().includes(q) ||
-        (p.marca && p.marca.toLowerCase().includes(q)) ||
-        (p.proveedor && p.proveedor.toLowerCase().includes(q));
-      return coincideEstado && coincideTexto;
-    });
-  }
+  private normalizarItem(raw: any, index: number): ItemCatalogo {
+    const contado = Number(raw.precioContado ?? raw.precio ?? 0);
+    const credito = Number(raw.precioCredito ?? raw.precioLista ?? contado);
+    const tipoRaw = (raw.tipo ?? raw.categoria ?? 'Servicio').toString().trim();
 
-  abrirModalNuevo(): void {
-    this.productoEditando = null;
-    this.errorFormulario = null;
-    this.productoForm.reset({
-      descripcion: '',
-      marca: '',
-      proveedor: '',
-      unidadMedida: 'Servicio',
-      imagen: '',
-      precioContado: null,
-      precioCredito: null,
-      formaVenta: 'En meses'
-    });
-    this.mostrarModal = true;
-  }
-
-  abrirModalEditar(prod: ProductoServicioResponseDTO): void {
-    this.productoEditando = prod;
-    this.errorFormulario = null;
-    this.productoForm.reset({
-      descripcion: prod.descripcion,
-      marca: prod.marca ?? '',
-      proveedor: prod.proveedor ?? '',
-      unidadMedida: prod.unidadMedida,
-      imagen: prod.imagen ?? '',
-      precioContado: prod.precioContado,
-      precioCredito: prod.precioCredito,
-      formaVenta: prod.formaVenta
-    });
-    this.mostrarModal = true;
-  }
-
-  cerrarModal(): void {
-    this.mostrarModal = false;
-  }
-
-  guardarProducto(): void {
-    if (this.productoForm.invalid) {
-      this.productoForm.markAllAsTouched();
-      return;
-    }
-
-    const val = this.productoForm.value;
-    const contado = Number(val.precioContado);
-    const credito = Number(val.precioCredito);
-
-    if (credito <= contado) {
-      this.errorFormulario =
-        'El precio de lista (crédito) debe ser mayor que el precio al contado.';
-      return;
-    }
-
-    this.guardando = true;
-    this.errorFormulario = null;
-
-    const dto: ProductoServicioRequestDTO = {
-      descripcion: val.descripcion.trim(),
-      marca: val.marca?.trim() || null,
-      proveedor: val.proveedor?.trim() || null,
-      unidadMedida: val.unidadMedida.trim(),
-      imagen: val.imagen?.trim() || null,
+    return {
+      idProductoServicio: raw.idProductoServicio ?? raw.idProducto ?? index + 1,
+      descripcion: raw.descripcion ?? raw.nombre ?? 'Servicio estético',
+      marca: (raw.marca ?? 'Divinas').toString().trim(),
+      tipo: tipoRaw,
+      proveedor: raw.proveedor ?? 'Distribuidora Estética Perú SAC',
       precioContado: contado,
       precioCredito: credito,
-      formaVenta: val.formaVenta
+      modalidad: raw.modalidad ?? (credito > contado ? 'En meses' : 'Al contado')
     };
-
-    const peticion$ = this.productoEditando
-      ? this.productoService.actualizar(
-          this.idTienda,
-          this.productoEditando.idProductoServicio,
-          dto
-        )
-      : this.productoService.crear(this.idTienda, dto);
-
-    peticion$.subscribe({
-      next: () => {
-        this.guardando = false;
-        this.mostrarModal = false;
-        this.mensajeExito = this.productoEditando
-          ? 'Producto o servicio actualizado correctamente.'
-          : 'Producto o servicio registrado en el catálogo.';
-        this.cargarProductos();
-      },
-      error: (err: HttpErrorResponse) => {
-        this.guardando = false;
-        const body = err.error as ErrorResponse | undefined;
-        this.errorFormulario = body?.mensaje || 'Error al guardar el producto o servicio.';
-      }
-    });
   }
 
-  darDeBajaProducto(prod: ProductoServicioResponseDTO): void {
-    const ok = window.confirm(
-      `¿Deseas dar de baja "${prod.descripcion}"? Dejará de estar disponible para nuevas compras.`
-    );
-    if (!ok) return;
-
-    this.productoService.darDeBaja(this.idTienda, prod.idProductoServicio).subscribe({
-      next: () => {
-        this.mensajeExito = `"${prod.descripcion}" fue dado de baja del catálogo.`;
-        this.cargarProductos();
-      },
-      error: (err: HttpErrorResponse) => {
-        const body = err.error as ErrorResponse | undefined;
-        this.mensajeError = body?.mensaje || 'No se pudo dar de baja el producto.';
+  private extraerMarcas(): void {
+    const setMarcas = new Set<string>();
+    for (const item of this.catalogoCompleto) {
+      if (item.marca) {
+        setMarcas.add(item.marca);
       }
+    }
+    this.marcasDisponibles = Array.from(setMarcas).sort((a, b) => a.localeCompare(b));
+  }
+
+  aplicarFiltros(): void {
+    const termino = this.textoBusqueda.trim().toLowerCase();
+    const marca = this.marcaSeleccionada;
+    const minPrecio =
+      this.precioMinimo !== null &&
+      this.precioMinimo !== undefined &&
+      !Number.isNaN(Number(this.precioMinimo))
+        ? Number(this.precioMinimo)
+        : null;
+    const tipo = this.tipoSeleccionado.toLowerCase();
+
+    this.catalogoFiltrado = this.catalogoCompleto.filter((item) => {
+      const coincideDescripcion =
+        !termino || item.descripcion.toLowerCase().includes(termino);
+      const coincideMarca = !marca || item.marca === marca;
+      const coincidePrecio =
+        minPrecio === null || item.precioContado >= minPrecio;
+      const coincideTipo =
+        !tipo || item.tipo.toLowerCase().includes(tipo);
+
+      return coincideDescripcion && coincideMarca && coincidePrecio && coincideTipo;
     });
+
+    this.cdr.detectChanges();
+  }
+
+  limpiarFiltros(): void {
+    this.textoBusqueda = '';
+    this.marcaSeleccionada = '';
+    this.precioMinimo = null;
+    this.tipoSeleccionado = '';
+    this.aplicarFiltros();
+  }
+
+  abrirModalCompra(item: ItemCatalogo): void {
+    this.productoAComprar = item;
+    this.modalidadCompra = 'CREDITO';
+    this.compraConfirmada = false;
+    this.numCuotasSimulacion = 3;
+    this.fechaPrimerPagoSimulacion = this.obtenerFechaHoyISO();
+    this.errorSimulacion = null;
+    this.resultadoSimulacion = null;
+    this.simulando = false;
+    this.cdr.detectChanges();
+  }
+
+  cerrarModalCompra(): void {
+    this.productoAComprar = null;
+    this.compraConfirmada = false;
+    this.errorSimulacion = null;
+    this.resultadoSimulacion = null;
+    this.simulando = false;
+    this.cdr.detectChanges();
+  }
+
+  cambiarModalidad(modalidad: 'CONTADO' | 'CREDITO'): void {
+    this.modalidadCompra = modalidad;
+    this.errorSimulacion = null;
+    if (modalidad === 'CONTADO') {
+      this.resultadoSimulacion = null;
+    }
+    this.cdr.detectChanges();
+  }
+
+  onCambioParametrosSimulacion(): void {
+    this.errorSimulacion = null;
+    this.resultadoSimulacion = null;
+  }
+
+  simularCredito(): void {
+    if (!this.productoAComprar) return;
+
+    this.errorSimulacion = null;
+    this.resultadoSimulacion = null;
+
+    const cuotas = Number(this.numCuotasSimulacion);
+    if (!cuotas || !Number.isInteger(cuotas) || cuotas < 1) {
+      this.errorSimulacion = 'Ingresa un número de cuotas válido (mínimo 1).';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    if (!this.fechaPrimerPagoSimulacion) {
+      this.errorSimulacion = 'Selecciona la fecha de primer pago.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const sesion = this.authService.sesionActual;
+    const idTienda = sesion?.idTienda;
+    const idCliente = sesion?.idCliente;
+
+    if (!idTienda || !idCliente) {
+      this.errorSimulacion = 'No se encontró una sesión de cliente activa para simular.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const montoProducto = Number(this.productoAComprar.precioCredito.toFixed(2));
+    const payload: SimulacionRequestDTO = {
+      fechaCompra: this.fechaPrimerPagoSimulacion,
+      monto: montoProducto,
+      formaPago: 'En meses',
+      numMeses: cuotas
+    };
+
+    this.simulando = true;
+    this.cdr.detectChanges();
+
+    // Llama a CompraController.simular (no guarda ni modifica nada en la base de datos)
+    this.http
+      .post<SimulacionResponseDTO>(
+        `${environment.apiUrl}/tiendas/${idTienda}/clientes/${idCliente}/compras/simular`,
+        payload
+      )
+      .pipe(
+        finalize(() => {
+          this.simulando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.resultadoSimulacion = this.generarCronogramaMontoExacto(
+            montoProducto,
+            cuotas,
+            this.fechaPrimerPagoSimulacion
+          );
+          this.cdr.detectChanges();
+        },
+        error: (err: HttpErrorResponse) => {
+          const body = err?.error as ErrorResponse | undefined;
+          this.errorSimulacion =
+            body?.mensaje || 'No se pudo calcular la simulación con los datos ingresados.';
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  /**
+   * Genera la cuota fija y las fechas mensuales a partir de fechaPrimerPago,
+   * garantizando que la suma de todas las cuotas sea exactamente igual al monto del producto.
+   */
+  private generarCronogramaMontoExacto(
+    montoTotal: number,
+    numCuotas: number,
+    fechaPrimerPagoISO: string
+  ): ResultadoSimulacionVista {
+    const cuotaFijaBase = Number((montoTotal / numCuotas).toFixed(2));
+    const cronograma: CuotaSimuladaVista[] = [];
+
+    for (let i = 0; i < numCuotas; i++) {
+      const esUltima = i === numCuotas - 1;
+      const montoCuota = esUltima
+        ? Number((montoTotal - cuotaFijaBase * (numCuotas - 1)).toFixed(2))
+        : cuotaFijaBase;
+
+      cronograma.push({
+        numero: i + 1,
+        fechaPago: this.sumarMesesFormateado(fechaPrimerPagoISO, i),
+        montoCuota
+      });
+    }
+
+    return {
+      numCuotas,
+      cuotaFija: cuotaFijaBase,
+      montoTotal,
+      cronograma
+    };
+  }
+
+  private sumarMesesFormateado(fechaISO: string, mesesASumar: number): string {
+    const [anio, mes, dia] = fechaISO.split('-').map(Number);
+    const totalMeses = mes - 1 + mesesASumar;
+    const anioDestino = anio + Math.floor(totalMeses / 12);
+    const mesDestino = (totalMeses % 12) + 1;
+    const ultimoDiaMes = new Date(anioDestino, mesDestino, 0).getDate();
+    const diaDestino = Math.min(dia, ultimoDiaMes);
+
+    return `${String(diaDestino).padStart(2, '0')}/${String(mesDestino).padStart(2, '0')}/${anioDestino}`;
+  }
+
+  private obtenerFechaHoyISO(): string {
+    const hoy = new Date();
+    const anio = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
+  }
+
+  confirmarSolicitudCompra(): void {
+    // Confirmación únicamente visual en memoria sin modificar la base de datos
+    this.compraConfirmada = true;
+    this.cdr.detectChanges();
   }
 }
