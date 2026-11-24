@@ -67,6 +67,11 @@ export const routes: Routes = [
         data: { roles: ['ADMIN_TIENDA', 'CLIENTE'] }
       },
       {
+        path: 'mis-compras',
+        redirectTo: 'creditos',
+        pathMatch: 'full'
+      },
+      {
         path: 'creditos/:idCliente/:idCompra',
         component: DetalleCreditoComponent,
         canActivate: [roleGuard],

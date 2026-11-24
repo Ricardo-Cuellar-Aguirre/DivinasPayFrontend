@@ -1,118 +1,67 @@
-<section class="catalogo-page">
-  <!-- Encabezado -->
+<div class="catalogo-page">
   <div class="catalogo-header">
-    <h1 class="page-title">Productos &amp; Servicios</h1>
-    <p class="page-subtitle">
-      Catálogo comercial con precios al contado, precios de lista a crédito y modalidades de venta
-    </p>
-  </div>
+    <div>
+      <span class="catalogo-kicker">DivinasPay · Catálogo activo</span>
+      <h1 class="catalogo-title">Productos y Servicios</h1>
+    </div>
 
-  <!-- Renglón de Búsqueda y Filtros -->
-  <div class="filter-bar-card">
-    <div class="filter-row">
-      <div class="search-box">
-        <svg viewBox="0 0 24 24" class="search-icon" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          type="text"
-          [(ngModel)]="textoBusqueda"
-          (input)="aplicarFiltros()"
-          class="filter-input search-input"
-          placeholder="Buscar por descripción del producto o servicio..."
-        />
+    <div class="catalogo-controls">
+      <div class="disponible-pill">
+        <span>Crédito disponible:</span>
+        <strong>S/ {{ limiteDisponible | number:'1.2-2' }}</strong>
       </div>
-
-      <div class="filters-group">
-        <select
-          [(ngModel)]="marcaSeleccionada"
-          (change)="aplicarFiltros()"
-          class="filter-select"
-          aria-label="Filtrar por marca"
-        >
-          <option value="">Marca: Todas</option>
-          @for (m of marcasDisponibles; track m) {
-            <option [value]="m">{{ m }}</option>
-          }
-        </select>
-
-        <div class="price-filter-wrap">
-          <span class="price-prefix">Precio ≥ S/</span>
-          <input
-            type="number"
-            min="0"
-            step="10"
-            [(ngModel)]="precioMinimo"
-            (input)="aplicarFiltros()"
-            class="filter-input price-input"
-            placeholder="0.00"
-            aria-label="Precio mayor o igual a"
-          />
-        </div>
-
-        <select
-          [(ngModel)]="tipoSeleccionado"
-          (change)="aplicarFiltros()"
-          class="filter-select"
-          aria-label="Filtrar por tipo"
-        >
-          <option value="">Tipo: Todos</option>
-          <option value="servicio">Servicio</option>
-          <option value="producto">Producto</option>
-        </select>
-      </div>
+      <input
+        type="text"
+        [(ngModel)]="textoBusqueda"
+        (input)="filtrarProductos()"
+        placeholder="Buscar servicio o producto..."
+        class="search-input"
+      />
     </div>
   </div>
 
-  <!-- Grilla de Cartas -->
   @if (cargando) {
-    <div class="empty-state-card">Cargando catálogo de productos y servicios...</div>
-  } @else if (catalogoFiltrado.length === 0) {
-    <div class="empty-state-card">
-      <p>No se encontraron productos o servicios con los filtros aplicados.</p>
-      <button type="button" class="btn-secondary" (click)="limpiarFiltros()">
-        Limpiar filtros
-      </button>
-    </div>
+    <div class="estado-box">Cargando catálogo de la tienda...</div>
+  } @else if (productosFiltrados.length === 0) {
+    <div class="estado-box">No se encontraron productos o servicios disponibles.</div>
   } @else {
-    <div class="cards-grid">
-      @for (item of catalogoFiltrado; track item.idProductoServicio) {
-        <article class="product-card">
-          <div class="card-media">
-            <span
-              class="modality-pill"
-              [class.contado]="item.modalidad.toLowerCase().includes('contado')"
-            >
-              {{ item.modalidad }}
-            </span>
-
-            <svg viewBox="0 0 24 24" class="sparkle-icon" fill="currentColor">
-              <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
-            </svg>
+    <div class="productos-grid">
+      @for (prod of productosFiltrados; track prod.idProductoServicio) {
+        <article class="producto-card">
+          <div class="producto-img-wrap">
+            <img
+              [src]="prod.imagen || 'assets/images/logo-principal.jpg'"
+              [alt]="prod.descripcion"
+              class="producto-img"
+            />
+            <span class="unidad-badge">{{ prod.unidadMedida }}</span>
           </div>
 
-          <div class="card-body">
-            <div class="card-meta">{{ item.marca }} · {{ item.tipo }}</div>
-            <h2 class="card-title">{{ item.descripcion }}</h2>
-            <div class="card-provider">Proveedor: {{ item.proveedor }}</div>
+          <div class="producto-body">
+            <h3 class="producto-titulo">{{ prod.descripcion }}</h3>
+            <p class="producto-meta">
+              {{ prod.marca && prod.marca !== 'no aplica' ? prod.marca : 'Divinas Salón & Spa' }}
+            </p>
 
-            <div class="prices-row">
-              <div class="price-box cash">
-                <span class="price-label">Contado</span>
-                <span class="price-value">S/ {{ item.precioContado | number: '1.2-2' }}</span>
+            <div class="precios-dual-grid">
+              <div class="precio-col-box contado-box">
+                <span class="precio-lbl">Precio al contado</span>
+                <strong class="precio-contado-val">
+                  S/ {{ prod.precioContado | number:'1.2-2' }}
+                </strong>
               </div>
-
-              <div class="price-box credit">
-                <span class="price-label">Precio Lista (Crédito)</span>
-                <span class="price-value">S/ {{ item.precioCredito | number: '1.2-2' }}</span>
+              <div class="precio-col-box credito-box">
+                <span class="precio-lbl">Precio al crédito</span>
+                <strong class="precio-credito-val">
+                  S/ {{ prod.precioCredito | number:'1.2-2' }}
+                </strong>
               </div>
             </div>
 
             <button
               type="button"
-              class="btn-buy"
-              (click)="abrirModalCompra(item)"
+              class="btn-comprar-card"
+              (click)="abrirModalCompra(prod)"
             >
               Comprar
             </button>
@@ -121,168 +70,310 @@
       }
     </div>
   }
+</div>
 
-  <!-- Modal de Compra y Simulación Momentánea -->
-  @if (productoAComprar) {
-    <div class="modal-backdrop" (click)="cerrarModalCompra()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        @if (compraConfirmada) {
-          <span class="modality-pill">Simulación finalizada</span>
-          <h3 class="modal-title">¡Detalle revisado!</h3>
-          <p class="modal-desc">
-            Has revisado la opción de <strong>{{ productoAComprar.descripcion }}</strong>
-            ({{ modalidadCompra === 'CONTADO' ? 'Pago al contado' : 'Financiamiento a crédito en ' + (resultadoSimulacion?.numCuotas || numCuotasSimulacion) + ' cuotas' }}).
-            Esta vista previa es referencial y no modifica tu base de datos.
-          </p>
-          <button type="button" class="btn-buy" (click)="cerrarModalCompra()">
-            Volver al catálogo
-          </button>
-        } @else {
-          <div class="card-meta">{{ productoAComprar.marca }} · {{ productoAComprar.tipo }}</div>
-          <h3 class="modal-title">{{ productoAComprar.descripcion }}</h3>
+<!-- ==========================================================================
+     MODAL 1: ELEGIR MODALIDAD + CANTIDAD (QTY) + SIMULACIÓN AL CRÉDITO
+     ========================================================================== -->
+@if (modalCompraAbierto && productoSeleccionado) {
+  <div class="modal-backdrop" (click)="cerrarModalCompra()">
+    <div
+      class="divinas-modal-card"
+      [class.modal-wide]="modalidad === 'CREDITO'"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">Confirmar adquisición</span>
+          <h2 class="modal-title">Elige tu modalidad de compra</h2>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="cerrarModalCompra()">✕</button>
+      </div>
 
-          <!-- 2 Opciones de Modalidad -->
-          <div class="modal-options">
-            <label
-              class="modal-option"
-              [class.selected]="modalidadCompra === 'CONTADO'"
-              (click)="cambiarModalidad('CONTADO')"
-            >
-              <input
-                type="radio"
-                name="mod"
-                value="CONTADO"
-                [(ngModel)]="modalidadCompra"
-              />
-              <div>
-                <strong>Pago al Contado</strong>
-                <span>S/ {{ productoAComprar.precioContado | number: '1.2-2' }}</span>
+      <div class="producto-resumen-box">
+        <img
+          [src]="productoSeleccionado.imagen || 'assets/images/logo-principal.jpg'"
+          [alt]="productoSeleccionado.descripcion"
+          class="resumen-thumb"
+        />
+        <div class="resumen-info">
+          <span class="resumen-tag">{{ productoSeleccionado.unidadMedida }}</span>
+          <h3>{{ productoSeleccionado.descripcion }}</h3>
+          <span class="unit-sub">
+            Unitario: S/ {{ productoSeleccionado.precioContado | number:'1.2-2' }} contado ·
+            S/ {{ productoSeleccionado.precioCredito | number:'1.2-2' }} crédito
+          </span>
+        </div>
+
+        <!-- Selector de Cantidad a comprar (Qty) -->
+        <div class="qty-control-box">
+          <span class="qty-lbl">Cantidad (Qty)</span>
+          <div class="qty-stepper">
+            <button type="button" (click)="cambiarCantidad(-1)" [disabled]="cantidadSeguro <= 1">−</button>
+            <input
+              type="number"
+              min="1"
+              [(ngModel)]="cantidadComprada"
+              (change)="onCantidadInput()"
+            />
+            <button type="button" (click)="cambiarCantidad(1)">+</button>
+          </div>
+        </div>
+      </div>
+
+      @if (errorCompra) {
+        <div class="modal-alert-error">{{ errorCompra }}</div>
+      }
+
+      <div class="modalidad-grid">
+        <button
+          type="button"
+          class="modalidad-card"
+          [class.active]="modalidad === 'CONTADO'"
+          (click)="seleccionarModalidad('CONTADO')"
+        >
+          <div class="mod-top">
+            <span class="mod-title">Al contado</span>
+            <span class="mod-badge">{{ cantidadSeguro }} unid.</span>
+          </div>
+          <strong class="mod-amount">
+            S/ {{ totalContadoModal | number:'1.2-2' }}
+          </strong>
+          <span class="mod-sub">Único Pago · Directo a Historial de Compras</span>
+        </button>
+
+        <button
+          type="button"
+          class="modalidad-card"
+          [class.active]="modalidad === 'CREDITO'"
+          [disabled]="productoSeleccionado.formaVenta === 'Al contado'"
+          (click)="seleccionarModalidad('CREDITO')"
+        >
+          <div class="mod-top">
+            <span class="mod-title">Al crédito</span>
+            <span class="mod-badge">{{ etiquetaTasaCliente }}</span>
+          </div>
+          <strong class="mod-amount">
+            S/ {{ totalCreditoModal | number:'1.2-2' }}
+          </strong>
+          <span class="mod-sub">
+            {{
+              productoSeleccionado.formaVenta === 'Al contado'
+                ? 'Solo disponible al contado'
+                : 'Total por ' + cantidadSeguro + ' unid. hasta ' + maxMesesCliente + ' meses'
+            }}
+          </span>
+        </button>
+      </div>
+
+      @if (modalidad === 'CREDITO') {
+        <div class="simulador-window">
+          <div class="simulador-top-bar">
+            <div class="sim-title-group">
+              <span class="sim-pill">Simulador · {{ etiquetaTasaCliente }}</span>
+              <h3>Cronograma de pagos al crédito</h3>
+            </div>
+
+            <div class="sim-inputs-row">
+              <div class="sim-field">
+                <label for="fechaCompraInput">Fecha de compra</label>
+                <input
+                  id="fechaCompraInput"
+                  type="date"
+                  [(ngModel)]="fechaCompra"
+                  (change)="actualizarSimulacion()"
+                  class="input-fecha"
+                />
               </div>
-            </label>
 
-            <label
-              class="modal-option"
-              [class.selected]="modalidadCompra === 'CREDITO'"
-              (click)="cambiarModalidad('CREDITO')"
-            >
-              <input
-                type="radio"
-                name="mod"
-                value="CREDITO"
-                [(ngModel)]="modalidadCompra"
-              />
-              <div>
-                <strong>Financiamiento a Crédito</strong>
-                <span>S/ {{ productoAComprar.precioCredito | number: '1.2-2' }}</span>
+              <div class="sim-field">
+                <label for="selectMeses">Número de cuotas (meses)</label>
+                <select
+                  id="selectMeses"
+                  [(ngModel)]="numMeses"
+                  (change)="actualizarSimulacion()"
+                  class="select-meses"
+                >
+                  @for (m of opcionesMeses; track m) {
+                    <option [ngValue]="m">{{ m }} meses</option>
+                  }
+                </select>
               </div>
-            </label>
+            </div>
           </div>
 
-          <!-- Simulador de Cuotas (visible cuando elige Financiamiento a Crédito) -->
-          @if (modalidadCompra === 'CREDITO') {
-            <div class="simulator-panel">
-              <div class="simulator-header">
-                <span class="simulator-title">Simulador de cuotas</span>
-                <span class="simulator-badge">Vista previa sin registro</span>
+          @if (simulando) {
+            <div class="simulando-box">Calculando cronograma financiero...</div>
+          } @else if (simulacion) {
+            <div class="sim-kpis-grid">
+              <div class="sim-kpi-item highlight">
+                <span>Cuota fija mensual</span>
+                <strong>S/ {{ simulacion.cuotaFija | number:'1.2-2' }}</strong>
               </div>
-
-              <div class="simulator-inputs-grid">
-                <div class="sim-field">
-                  <label for="simCuotas">Número de cuotas</label>
-                  <input
-                    id="simCuotas"
-                    type="number"
-                    min="1"
-                    step="1"
-                    [(ngModel)]="numCuotasSimulacion"
-                    (ngModelChange)="onCambioParametrosSimulacion()"
-                    class="sim-input"
-                    placeholder="Ej. 3"
-                  />
-                </div>
-
-                <div class="sim-field">
-                  <label for="simFecha">Fecha de primer pago</label>
-                  <input
-                    id="simFecha"
-                    type="date"
-                    [(ngModel)]="fechaPrimerPagoSimulacion"
-                    (ngModelChange)="onCambioParametrosSimulacion()"
-                    class="sim-input"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  class="btn-simulate"
-                  [disabled]="simulando"
-                  (click)="simularCredito()"
-                >
-                  {{ simulando ? 'Calculando...' : 'Simular' }}
-                </button>
+              <div class="sim-kpi-item">
+                <span>Total cuotas ({{ simulacion.numMeses }} meses)</span>
+                <strong>S/ {{ simulacion.totalCuotas | number:'1.2-2' }}</strong>
               </div>
+              <div class="sim-kpi-item">
+                <span>Monto financiado ({{ cantidadSeguro }} unid.)</span>
+                <strong>S/ {{ simulacion.monto | number:'1.2-2' }}</strong>
+              </div>
+              <div class="sim-kpi-item">
+                <span>Capital capitalizado</span>
+                <strong>S/ {{ simulacion.capitalCapitalizado | number:'1.2-2' }}</strong>
+              </div>
+              <div class="sim-kpi-item">
+                <span>Período de gracia</span>
+                <strong>{{ simulacion.diasGracia }} días (fin {{ formatearFecha(simulacion.fechaFinGracia) }})</strong>
+              </div>
+              <div class="sim-kpi-item">
+                <span>TEA / TCEA</span>
+                <strong>
+                  {{ (simulacion.tasaEfectivaAnual * 100) | number:'1.2-2' }}% /
+                  {{ (simulacion.tcea * 100) | number:'1.2-2' }}%
+                </strong>
+              </div>
+            </div>
 
-              @if (errorSimulacion) {
-                <div class="sim-error">{{ errorSimulacion }}</div>
-              }
-
-              @if (resultadoSimulacion) {
-                <div class="sim-result-box">
-                  <div class="sim-summary-row">
-                    <div class="sim-kpi">
-                      <span class="sim-kpi-label">Cuota fija mensual</span>
-                      <strong class="sim-kpi-val">
-                        S/ {{ resultadoSimulacion.cuotaFija | number: '1.2-2' }}
-                      </strong>
-                    </div>
-
-                    <div class="sim-kpi right">
-                      <span class="sim-kpi-label">
-                        Total ({{ resultadoSimulacion.numCuotas }} {{ resultadoSimulacion.numCuotas === 1 ? 'cuota' : 'cuotas' }})
-                      </span>
-                      <strong class="sim-kpi-total">
-                        S/ {{ resultadoSimulacion.montoTotal | number: '1.2-2' }}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div class="sim-schedule-wrap">
-                    <table class="sim-table">
-                      <thead>
-                        <tr>
-                          <th>Cuota</th>
-                          <th>Fecha de pago</th>
-                          <th class="text-right">Monto</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (fila of resultadoSimulacion.cronograma; track fila.numero) {
-                          <tr>
-                            <td>Cuota {{ fila.numero }} de {{ resultadoSimulacion.numCuotas }}</td>
-                            <td>{{ fila.fechaPago }}</td>
-                            <td class="text-right font-bold">
-                              S/ {{ fila.montoCuota | number: '1.2-2' }}
-                            </td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              }
+            <div class="cronograma-table-wrap">
+              <table class="cronograma-table">
+                <thead>
+                  <tr>
+                    <th>N.°</th>
+                    <th>Vence</th>
+                    <th>Saldo inicial</th>
+                    <th>Cuota</th>
+                    <th>Interés</th>
+                    <th>Amortización</th>
+                    <th>Saldo final</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (fila of simulacion.cuotas; track fila.numero) {
+                    <tr>
+                      <td>{{ fila.numero }}</td>
+                      <td>{{ formatearFecha(fila.fechaVencimiento) }}</td>
+                      <td>S/ {{ fila.saldoInicial | number:'1.2-2' }}</td>
+                      <td><strong>S/ {{ fila.cuota | number:'1.2-2' }}</strong></td>
+                      <td>S/ {{ fila.interes | number:'1.2-2' }}</td>
+                      <td>S/ {{ fila.amortizacion | number:'1.2-2' }}</td>
+                      <td>S/ {{ fila.saldoFinal | number:'1.2-2' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
           }
-
-          <div class="modal-actions">
-            <button type="button" class="btn-secondary" (click)="cerrarModalCompra()">
-              Cancelar
+        </div>
+      } @else {
+        <div class="config-panel">
+          <div class="contado-fecha-row">
+            <span class="panel-lbl">Medio de pago al contado:</span>
+            <div class="sim-field">
+              <label for="fechaContadoInput">Fecha de compra</label>
+              <input
+                id="fechaContadoInput"
+                type="date"
+                [(ngModel)]="fechaCompra"
+                class="input-fecha"
+              />
+            </div>
+          </div>
+          <div class="metodos-contado-row">
+            <button
+              type="button"
+              [class.selected]="metodoPagoContado === 'TARJETA'"
+              (click)="metodoPagoContado = 'TARJETA'"
+            >
+              Tarjeta Débito / Crédito
             </button>
-            <button type="button" class="btn-buy" (click)="confirmarSolicitudCompra()">
-              Confirmar compra
+            <button
+              type="button"
+              [class.selected]="metodoPagoContado === 'YAPE_PLIN'"
+              (click)="metodoPagoContado = 'YAPE_PLIN'"
+            >
+              Yape / Plin
+            </button>
+            <button
+              type="button"
+              [class.selected]="metodoPagoContado === 'PAGO_EFECTIVO'"
+              (click)="metodoPagoContado = 'PAGO_EFECTIVO'"
+            >
+              PagoEfectivo
             </button>
           </div>
-        }
+        </div>
+      }
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secundario" (click)="cerrarModalCompra()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-primario"
+          [disabled]="procesandoCompra || (modalidad === 'CREDITO' && simulando)"
+          (click)="confirmarCompra()"
+        >
+          {{ procesandoCompra ? 'Registrando compra...' : 'Confirmar compra' }}
+        </button>
       </div>
     </div>
-  }
-</section>
+  </div>
+}
+
+<!-- ==========================================================================
+     MODAL 2: VENTANA DE COMPRA REALIZADA CON ÉXITO
+     ========================================================================== -->
+@if (modalExitoAbierto && compraExitosa) {
+  <div class="modal-backdrop" (click)="cerrarModalExito()">
+    <div class="divinas-modal-card exito-card" (click)="$event.stopPropagation()">
+      <div class="exito-icon-circle">✓</div>
+      <span class="exito-kicker">Recibo N.° {{ formatearRecibo(compraExitosa) }}</span>
+      <h2 class="exito-title">¡Compra realizada con éxito!</h2>
+      <p class="exito-desc">
+        Tu adquisición de <strong>{{ compraExitosa.descripcionProducto }}</strong> quedó registrada correctamente.
+      </p>
+
+      <div class="exito-resumen-grid">
+        <div class="exito-row">
+          <span>N.° Recibo</span>
+          <strong>#{{ formatearRecibo(compraExitosa) }}</strong>
+        </div>
+        <div class="exito-row">
+          <span>Cantidad (Qty)</span>
+          <strong>{{ compraExitosa.cantidadComprada || 1 }} unid.</strong>
+        </div>
+        <div class="exito-row">
+          <span>Modalidad</span>
+          <strong>
+            {{ modalidadExitosa === 'CREDITO' ? 'Al crédito (' + compraExitosa.numMeses + ' cuotas)' : 'Al contado (Pago único)' }}
+          </strong>
+        </div>
+        <div class="exito-row">
+          <span>Fecha de compra</span>
+          <strong>{{ formatearFecha(compraExitosa.fechaCompra) }}</strong>
+        </div>
+        <div class="exito-row">
+          <span>Monto total</span>
+          <strong class="txt-green">S/ {{ compraExitosa.monto | number:'1.2-2' }}</strong>
+        </div>
+        <div class="exito-row">
+          <span>Ubicación en Mis Compras</span>
+          <strong>
+            {{ modalidadExitosa === 'CREDITO' ? 'Créditos Activos' : 'Historial de Compras' }}
+          </strong>
+        </div>
+      </div>
+
+      <div class="exito-actions">
+        <button type="button" class="btn-secundario" (click)="cerrarModalExito()">
+          Seguir comprando
+        </button>
+        <button type="button" class="btn-primario" (click)="irAMisCompras()">
+          Ver en Mis Compras
+        </button>
+      </div>
+    </div>
+  </div>
+}

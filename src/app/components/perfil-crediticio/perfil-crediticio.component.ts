@@ -2,377 +2,284 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { ActivatedRoute, RouterModule } from '@angular/router';
+import { finalize, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AuthService } from '../../services/auth.service';
-
-export interface PerfilClienteData {
-  idCliente: number;
-  nombreCliente: string;
-  usuarioCliente: string;
-  tipoTasa: string;
-  tasaInteres: number;
-  maxMesesCredito: number;
-  fechaCorte: number;
-  fechaPago: number;
-  limiteMaxCredito: number;
-}
-
-export interface CreditoActivoItem {
-  idCompra: number;
-  nombreProducto: string;
-  descripcion: string;
-  montoTotalFinanciado: number;
-  cuotaFijaMensual: number;
-  capitalPendiente: number;
-  cuotasPagadas: number;
-  totalCuotas: number;
-  cuotasRestantes: number;
-  fechaVencimientoProxima: string;
-  numeroCuotaProxima: number;
-  montoCuotaProxima: number;
-}
-
-export interface CompraHistorialItem {
-  idCompra: number;
-  nombreProducto: string;
-  fechaCompra: string;
-  fechaRaw: Date | null;
-  numeroRecibo: string;
-  cantidad: number;
-  montoTotal: number;
-}
+import {
+  CompraBackendDTO,
+  CompraService,
+  CuotaBackendDTO,
+  ResumenPagosBackendDTO
+} from '../../services/compra.service';
 
 @Component({
   selector: 'app-perfil-crediticio',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './perfil-crediticio.component.html',
   styleUrl: './perfil-crediticio.component.css'
 })
 export class PerfilCrediticioComponent implements OnInit {
-  private readonly http = inject(HttpClient);
-  private readonly authService = inject(AuthService);
+  private readonly compraService = inject(CompraService);
   private readonly route = inject(ActivatedRoute);
+  private readonly http = inject(HttpClient);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  tabActiva: 'ACTIVOS' | 'HISTORIAL' = 'ACTIVOS';
+  idClienteRuta: number | null = null;
+  perfilCliente: any = null;
+  resumen: ResumenPagosBackendDTO | null = null;
+  creditosActivos: CompraBackendDTO[] = [];
+  historialCompras: CompraBackendDTO[] = [];
   cargando = true;
 
-  cliente: PerfilClienteData = {
-    idCliente: 0,
-    nombreCliente: 'Cliente DivinasPay',
-    usuarioCliente: 'cliente',
-    tipoTasa: 'Efectiva',
-    tasaInteres: 0,
-    maxMesesCredito: 6,
-    fechaCorte: 15,
-    fechaPago: 20,
-    limiteMaxCredito: 0
-  };
+  tabActiva: 'ACTIVOS' | 'HISTORIAL' = 'ACTIVOS';
 
-  creditoUtilizado = 0;
-  creditosActivos: CreditoActivoItem[] = [];
-  historialCompleto: CompraHistorialItem[] = [];
-  historialFiltrado: CompraHistorialItem[] = [];
+  // Filtro 1: Intervalo de fechas
+  filtroFechaDesde = '';
+  filtroFechaHasta = '';
 
-  mesSeleccionado = '';
-  anioSeleccionado = '';
-  aniosDisponibles: number[] = [];
+  // Filtro 2: Monto menor o mayor a la cantidad ingresada
+  filtroMontoCondicion: 'TODOS' | 'MENOR' | 'MAYOR' = 'TODOS';
+  filtroMontoCantidad: number | null = null;
 
-  readonly meses = [
-    { valor: '1', nombre: 'Enero' },
-    { valor: '2', nombre: 'Febrero' },
-    { valor: '3', nombre: 'Marzo' },
-    { valor: '4', nombre: 'Abril' },
-    { valor: '5', nombre: 'Mayo' },
-    { valor: '6', nombre: 'Junio' },
-    { valor: '7', nombre: 'Julio' },
-    { valor: '8', nombre: 'Agosto' },
-    { valor: '9', nombre: 'Septiembre' },
-    { valor: '10', nombre: 'Octubre' },
-    { valor: '11', nombre: 'Noviembre' },
-    { valor: '12', nombre: 'Diciembre' }
-  ];
+  // Modal de pago de cuota
+  modalPagoAbierto = false;
+  compraAPagar: CompraBackendDTO | null = null;
+  cuotaAPagar: CuotaBackendDTO | null = null;
+  metodoPago: 'TARJETA' | 'YAPE_PLIN' | 'PAGO_EFECTIVO' = 'YAPE_PLIN';
+  procesandoPago = false;
+  errorPago: string | null = null;
+  mensajeExitoPago: string | null = null;
 
   ngOnInit(): void {
-    const sesion = this.authService.sesionActual;
     const paramId = this.route.snapshot.paramMap.get('idCliente');
-    const idCliente = paramId ? Number(paramId) : sesion?.idCliente ?? 0;
-    const idTienda = sesion?.idTienda ?? 1;
-
-    if (sesion?.nombre) {
-      this.cliente.nombreCliente = sesion.nombre;
-    }
-
-    if (!idCliente) {
-      this.cargando = false;
-      this.cdr.detectChanges();
-      return;
-    }
-
-    this.cargarDatosClienteYCompras(idTienda, idCliente);
+    this.idClienteRuta = paramId ? Number(paramId) : null;
+    this.cargarDatos();
   }
 
-  private cargarDatosClienteYCompras(idTienda: number, idCliente: number): void {
-    forkJoin({
-      perfil: this.http
-        .get<any>(`${environment.apiUrl}/tiendas/${idTienda}/clientes/${idCliente}`)
-        .pipe(
-          catchError(() =>
-            this.http
-              .get<any>(`${environment.apiUrl}/clientes/${idCliente}`)
-              .pipe(catchError(() => of(null)))
-          )
-        ),
-      compras: this.http
-        .get<any[]>(`${environment.apiUrl}/clientes/${idCliente}/compras`)
-        .pipe(
-          catchError(() =>
-            this.http
-              .get<any[]>(`${environment.apiUrl}/tiendas/${idTienda}/clientes/${idCliente}/compras`)
-              .pipe(catchError(() => of([])))
-          )
-        )
-    }).subscribe(({ perfil, compras }) => {
-      if (perfil) {
-        this.cliente = {
-          idCliente: perfil.idCliente ?? idCliente,
-          nombreCliente: perfil.nombreCliente ?? this.cliente.nombreCliente,
-          usuarioCliente: perfil.usuarioCliente ?? this.cliente.usuarioCliente,
-          tipoTasa: perfil.tipoTasa ?? 'Efectiva',
-          tasaInteres: Number(perfil.tasaInteres ?? 0),
-          maxMesesCredito: Number(perfil.maxMesesCredito ?? 6),
-          fechaCorte: Number(perfil.fechaCorte ?? 15),
-          fechaPago: Number(perfil.fechaPago ?? 20),
-          limiteMaxCredito: Number(perfil.limiteMaxCredito ?? 0)
-        };
-      }
-
-      this.procesarCompras(compras || [], idCliente);
-      this.cargando = false;
-      this.cdr.detectChanges();
-    });
+  private hoyLocalIso(): string {
+    const hoy = new Date();
+    const anio = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
   }
 
-  private procesarCompras(listaCompras: any[], idCliente: number): void {
-    const activosTemp: CreditoActivoItem[] = [];
-    const historialTemp: CompraHistorialItem[] = [];
-
-    for (const raw of listaCompras) {
-      const formaPago = (raw.formaPago ?? '').toString().trim().toLowerCase();
-      const estado = (raw.estado ?? '').toString().trim().toLowerCase();
-
-      const nombreProd =
-        raw.nombreProducto ??
-        raw.productoServicio?.descripcion ??
-        raw.producto?.descripcion ??
-        raw.descripcion ??
-        'Servicio / Producto DivinasPay';
-
-      const descripcionProd =
-        raw.descripcionProducto ??
-        raw.productoServicio?.marca ??
-        raw.observacion ??
-        'Amortización francesa · Cuotas mensuales constantes';
-
-      const montoTotal = Number(raw.montoTotal ?? raw.monto ?? 0);
-      const cuotasArr: any[] = Array.isArray(raw.cuotas) ? raw.cuotas : [];
-      const totalCuotas = Number(raw.numCuotas ?? raw.meses ?? cuotasArr.length ?? 1);
-
-      const esEnMeses =
-        formaPago.includes('mes') || formaPago.includes('credito') || formaPago.includes('crédito');
-      const estaCancelada =
-        estado === 'cancelado' || estado === 'pagado' || estado === 'finalizado';
-
-      if (esEnMeses && !estaCancelada) {
-        const pagadas = cuotasArr.filter(
-          (q) =>
-            (q.estado ?? '').toString().toLowerCase() === 'pagada' ||
-            (q.estado ?? '').toString().toLowerCase() === 'pagado'
-        ).length;
-
-        const pendientes = cuotasArr.filter(
-          (q) =>
-            (q.estado ?? '').toString().toLowerCase() !== 'pagada' &&
-            (q.estado ?? '').toString().toLowerCase() !== 'pagado'
-        );
-
-        const cuotaRef = pendientes[0] ?? cuotasArr[0];
-        const cuotaFija = Number(
-          cuotaRef?.montoCuota ??
-            cuotaRef?.cuotaFija ??
-            (totalCuotas > 0 ? montoTotal / totalCuotas : montoTotal)
-        );
-
-        const capitalPendiente = Math.max(
-          0,
-          Number((montoTotal - pagadas * cuotaFija).toFixed(2))
-        );
-        const numeroCuotaProxima = Number(cuotaRef?.numeroCuota ?? pagadas + 1);
-        const fechaVenc = this.formatearFecha(cuotaRef?.fechaVencimiento ?? raw.fechaProximoPago);
-
-        const itemCredito: CreditoActivoItem = {
-          idCompra: raw.idCompra ?? 0,
-          nombreProducto: nombreProd,
-          descripcion: descripcionProd,
-          montoTotalFinanciado: montoTotal,
-          cuotaFijaMensual: cuotaFija,
-          capitalPendiente,
-          cuotasPagadas: pagadas,
-          totalCuotas,
-          cuotasRestantes: Math.max(0, totalCuotas - pagadas),
-          fechaVencimientoProxima: fechaVenc,
-          numeroCuotaProxima,
-          montoCuotaProxima: cuotaFija
-        };
-
-        activosTemp.push(itemCredito);
-
-        if (cuotasArr.length === 0 && raw.idCompra) {
-          this.cargarCuotasDeCompra(idCliente, raw.idCompra, itemCredito);
+  private obtenerIdTiendaSesion(): number {
+    for (const storage of [sessionStorage, localStorage]) {
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (!key) continue;
+        const raw = storage.getItem(key);
+        if (!raw || !raw.trim().startsWith('{')) continue;
+        try {
+          const obj = JSON.parse(raw);
+          const idTienda = obj?.idTienda ?? obj?.tienda?.idTienda ?? obj?.sesion?.idTienda;
+          if (idTienda != null) return Number(idTienda);
+        } catch {
+          // Ignorar
         }
       }
-
-      if (estaCancelada) {
-        const fechaObj = this.parsearFecha(raw.fechaCompra ?? raw.fecha);
-        historialTemp.push({
-          idCompra: raw.idCompra ?? 0,
-          nombreProducto: nombreProd,
-          fechaCompra: this.formatearFecha(raw.fechaCompra ?? raw.fecha),
-          fechaRaw: fechaObj,
-          numeroRecibo:
-            raw.numeroRecibo ??
-            raw.codigoRecibo ??
-            `REC-${String(raw.idCompra ?? 1).padStart(5, '0')}`,
-          cantidad: Number(raw.cantidad ?? 1),
-          montoTotal
-        });
-      }
     }
-
-    this.creditosActivos = activosTemp;
-    this.historialCompleto = historialTemp;
-    this.recalcularCreditoUtilizado();
-    this.extraerAniosHistorial();
-    this.filtrarHistorial();
+    return 1;
   }
 
-  private cargarCuotasDeCompra(
-    idCliente: number,
-    idCompra: number,
-    item: CreditoActivoItem
-  ): void {
-    this.http
-      .get<any[]>(`${environment.apiUrl}/clientes/${idCliente}/compras/${idCompra}/cuotas`)
-      .pipe(
-        catchError(() =>
-          this.http
-            .get<any[]>(`${environment.apiUrl}/compras/${idCompra}/cuotas`)
-            .pipe(catchError(() => of([])))
-        )
-      )
-      .subscribe((cuotas) => {
-        if (!cuotas || cuotas.length === 0) return;
+  cargarDatos(): void {
+    this.cargando = true;
 
-        const pagadas = cuotas.filter(
-          (q) =>
-            (q.estado ?? '').toString().toLowerCase() === 'pagada' ||
-            (q.estado ?? '').toString().toLowerCase() === 'pagado'
-        ).length;
-        const pendientes = cuotas.filter(
-          (q) =>
-            (q.estado ?? '').toString().toLowerCase() !== 'pagada' &&
-            (q.estado ?? '').toString().toLowerCase() !== 'pagado'
-        );
-        const proxima = pendientes[0] ?? cuotas[0];
+    const perfilObs$ = this.idClienteRuta
+      ? this.http.get(`${environment.apiUrl}/tiendas/${this.obtenerIdTiendaSesion()}/clientes/${this.idClienteRuta}`)
+      : this.compraService.obtenerPerfilCliente();
 
-        item.totalCuotas = cuotas.length;
-        item.cuotasPagadas = pagadas;
-        item.cuotasRestantes = Math.max(0, cuotas.length - pagadas);
-        item.cuotaFijaMensual = Number(
-          proxima?.montoCuota ?? proxima?.cuotaFija ?? item.cuotaFijaMensual
-        );
-        item.capitalPendiente = Math.max(
-          0,
-          Number((item.montoTotalFinanciado - pagadas * item.cuotaFijaMensual).toFixed(2))
-        );
-        item.numeroCuotaProxima = Number(proxima?.numeroCuota ?? pagadas + 1);
-        item.montoCuotaProxima = item.cuotaFijaMensual;
-        item.fechaVencimientoProxima = this.formatearFecha(proxima?.fechaVencimiento);
-
-        this.recalcularCreditoUtilizado();
+    perfilObs$.subscribe({
+      next: (perfil) => {
+        this.perfilCliente = perfil;
         this.cdr.detectChanges();
+      }
+    });
+
+    const pagosObs$ = this.idClienteRuta
+      ? this.compraService.obtenerPagos(this.idClienteRuta)
+      : this.compraService.obtenerPagos();
+
+    pagosObs$.subscribe({
+      next: (res) => {
+        this.resumen = res;
+        this.cdr.detectChanges();
+      }
+    });
+
+    const comprasObs$ = this.idClienteRuta
+      ? this.compraService.listar(this.idClienteRuta)
+      : this.compraService.listar();
+
+    comprasObs$
+      .pipe(
+        timeout(8000),
+        finalize(() => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (lista) => {
+          const compras = (lista || []).sort((a, b) => b.idCompra - a.idCompra);
+
+          // Créditos activos: compras con al menos 1 cuota en estado 'Pendiente' en la tabla cuota
+          this.creditosActivos = compras.filter(
+            (c) =>
+              Array.isArray(c.cuotas) &&
+              c.cuotas.some((q) => q.estado?.trim().toLowerCase() === 'pendiente')
+          );
+
+          // Historial de compras: todas las compras cuyas cuotas en la tabla cuota estén en estado 'Pagado'
+          this.historialCompras = compras.filter(
+            (c) =>
+              Array.isArray(c.cuotas) &&
+              c.cuotas.length > 0 &&
+              c.cuotas.every((q) => q.estado?.trim().toLowerCase() === 'pagado')
+          );
+
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.creditosActivos = [];
+          this.historialCompras = [];
+          this.cdr.detectChanges();
+        }
       });
   }
 
-  private recalcularCreditoUtilizado(): void {
-    this.creditoUtilizado = this.creditosActivos.reduce(
-      (acc, c) => acc + c.capitalPendiente,
-      0
-    );
+  get historialFiltrado(): CompraBackendDTO[] {
+    return this.historialCompras.filter((item) => {
+      // Filtro 1: Intervalo de fechas
+      if (this.filtroFechaDesde && item.fechaCompra < this.filtroFechaDesde) {
+        return false;
+      }
+      if (this.filtroFechaHasta && item.fechaCompra > this.filtroFechaHasta) {
+        return false;
+      }
+
+      // Filtro 2: Monto menor o mayor a la cantidad ingresada
+      const montoCompra = Number(item.monto ?? 0);
+      if (
+        this.filtroMontoCondicion !== 'TODOS' &&
+        this.filtroMontoCantidad !== null &&
+        this.filtroMontoCantidad !== undefined &&
+        String(this.filtroMontoCantidad) !== ''
+      ) {
+        const valorIngresado = Number(this.filtroMontoCantidad);
+        if (!Number.isNaN(valorIngresado)) {
+          if (this.filtroMontoCondicion === 'MENOR' && !(montoCompra <= valorIngresado)) {
+            return false;
+          }
+          if (this.filtroMontoCondicion === 'MAYOR' && !(montoCompra >= valorIngresado)) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }
+
+  limpiarFiltros(): void {
+    this.filtroFechaDesde = '';
+    this.filtroFechaHasta = '';
+    this.filtroMontoCondicion = 'TODOS';
+    this.filtroMontoCantidad = null;
+  }
+
+  get lineaMaxima(): number {
+    return Number(this.resumen?.limiteMaxCredito ?? this.perfilCliente?.limiteMaxCredito ?? 1500);
   }
 
   get creditoDisponible(): number {
-    return Math.max(0, this.cliente.limiteMaxCredito - this.creditoUtilizado);
+    return Number(this.resumen?.limiteDisponible ?? this.lineaMaxima);
   }
 
-  get porcentajeUtilizado(): number {
-    if (this.cliente.limiteMaxCredito <= 0) return 0;
-    const pct = (this.creditoUtilizado / this.cliente.limiteMaxCredito) * 100;
-    return Math.min(100, Math.max(0, pct));
+  get creditoUtilizado(): number {
+    return Math.max(0, this.lineaMaxima - this.creditoDisponible);
+  }
+
+  get porcentajeUtilizacion(): number {
+    if (this.lineaMaxima <= 0) return 0;
+    return Math.min(100, (this.creditoUtilizado / this.lineaMaxima) * 100);
   }
 
   get etiquetaTipoTasa(): string {
-    const t = (this.cliente.tipoTasa ?? '').trim().toLowerCase();
-    return t === 'nominal' ? 'TNA' : 'TEA';
+    return this.perfilCliente?.tipoTasa?.toLowerCase() === 'nominal' ? 'TNA' : 'TEA';
   }
 
-  private extraerAniosHistorial(): void {
-    const setAnios = new Set<number>([new Date().getFullYear()]);
-    for (const h of this.historialCompleto) {
-      if (h.fechaRaw) {
-        setAnios.add(h.fechaRaw.getFullYear());
-      }
+  formatearRecibo(item: CompraBackendDTO): string {
+    if (item.ordenRecibo && item.ordenRecibo.trim().length >= 5) {
+      return item.ordenRecibo.trim();
     }
-    this.aniosDisponibles = Array.from(setAnios).sort((a, b) => b - a);
+    return String(10000 + item.idCompra).padStart(6, '0');
   }
 
-  filtrarHistorial(): void {
-    this.historialFiltrado = this.historialCompleto.filter((item) => {
-      if (!item.fechaRaw) {
-        return !this.mesSeleccionado && !this.anioSeleccionado;
-      }
-      const coincideMes =
-        !this.mesSeleccionado ||
-        item.fechaRaw.getMonth() + 1 === Number(this.mesSeleccionado);
-      const coincideAnio =
-        !this.anioSeleccionado ||
-        item.fechaRaw.getFullYear() === Number(this.anioSeleccionado);
-      return coincideMes && coincideAnio;
-    });
+  cuotasPagadasCount(compra: CompraBackendDTO): number {
+    return (compra.cuotas || []).filter((q) => q.estado?.trim().toLowerCase() === 'pagado').length;
+  }
+
+  siguienteCuotaPendiente(compra: CompraBackendDTO): CuotaBackendDTO | null {
+    return (compra.cuotas || []).find((q) => q.estado?.trim().toLowerCase() === 'pendiente') || null;
+  }
+
+  formatearFecha(iso: string | undefined | null): string {
+    if (!iso) return '-';
+    return iso.split('-').reverse().join('/');
+  }
+
+  abrirModalPago(compra: CompraBackendDTO, cuota: CuotaBackendDTO): void {
+    this.compraAPagar = compra;
+    this.cuotaAPagar = cuota;
+    this.errorPago = null;
+    this.modalPagoAbierto = true;
     this.cdr.detectChanges();
   }
 
-  cambiarTab(tab: 'ACTIVOS' | 'HISTORIAL'): void {
-    this.tabActiva = tab;
+  cerrarModalPago(): void {
+    if (this.procesandoPago) return;
+    this.modalPagoAbierto = false;
+    this.compraAPagar = null;
+    this.cuotaAPagar = null;
     this.cdr.detectChanges();
   }
 
-  private parsearFecha(valor: any): Date | null {
-    if (!valor) return null;
-    const d = new Date(valor);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
+  confirmarPagoCuota(): void {
+    if (!this.compraAPagar || !this.cuotaAPagar || this.procesandoPago) return;
+    this.procesandoPago = true;
+    this.errorPago = null;
+    this.cdr.detectChanges();
 
-  private formatearFecha(valor: any): string {
-    const d = this.parsearFecha(valor);
-    if (!d) return 'Por confirmar';
-    const dia = String(d.getUTCDate()).padStart(2, '0');
-    const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const anio = d.getUTCFullYear();
-    return `${dia}/${mes}/${anio}`;
+    const fechaHoy = this.hoyLocalIso();
+    const idTienda = this.obtenerIdTiendaSesion();
+    const idCliente = this.compraAPagar.idCliente;
+
+    this.compraService
+      .pagarCuota(idTienda, idCliente, this.compraAPagar.idCompra, this.cuotaAPagar.numero, fechaHoy)
+      .pipe(
+        timeout(8000),
+        finalize(() => {
+          this.procesandoPago = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: () => {
+          const numCuota = this.cuotaAPagar?.numero;
+          const desc = this.compraAPagar?.descripcionProducto;
+          this.modalPagoAbierto = false;
+          this.compraAPagar = null;
+          this.cuotaAPagar = null;
+          this.mensajeExitoPago = `Cuota #${numCuota} de "${desc}" pagada correctamente.`;
+          this.cargarDatos();
+        },
+        error: (err) => {
+          this.errorPago = err?.error?.mensaje || 'No se pudo procesar el pago de la cuota.';
+          this.cdr.detectChanges();
+        }
+      });
   }
 }
