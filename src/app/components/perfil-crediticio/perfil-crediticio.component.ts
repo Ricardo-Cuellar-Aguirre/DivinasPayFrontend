@@ -34,15 +34,14 @@ export class PerfilCrediticioComponent implements OnInit {
 
   tabActiva: 'ACTIVOS' | 'HISTORIAL' = 'ACTIVOS';
 
-  // Filtro 1: Intervalo de fechas
+
   filtroFechaDesde = '';
   filtroFechaHasta = '';
 
-  // Filtro 2: Monto menor o mayor a la cantidad ingresada
+
   filtroMontoCondicion: 'TODOS' | 'MENOR' | 'MAYOR' = 'TODOS';
   filtroMontoCantidad: number | null = null;
 
-  // Modal de pago de cuota
   modalPagoAbierto = false;
   compraAPagar: CompraBackendDTO | null = null;
   cuotaAPagar: CuotaBackendDTO | null = null;
@@ -77,7 +76,7 @@ export class PerfilCrediticioComponent implements OnInit {
           const idTienda = obj?.idTienda ?? obj?.tienda?.idTienda ?? obj?.sesion?.idTienda;
           if (idTienda != null) return Number(idTienda);
         } catch {
-          // Ignorar
+          
         }
       }
     }
@@ -125,14 +124,14 @@ export class PerfilCrediticioComponent implements OnInit {
         next: (lista) => {
           const compras = (lista || []).sort((a, b) => b.idCompra - a.idCompra);
 
-          // Créditos activos: compras con al menos 1 cuota en estado 'Pendiente' en la tabla cuota
+          // Créditos activos: compras con al menos 1 cuota en estado 'Pendiente'
           this.creditosActivos = compras.filter(
             (c) =>
               Array.isArray(c.cuotas) &&
               c.cuotas.some((q) => q.estado?.trim().toLowerCase() === 'pendiente')
           );
 
-          // Historial de compras: todas las compras cuyas cuotas en la tabla cuota estén en estado 'Pagado'
+          // Historial de compras: todas las compras con cuotas en estado 'Pagado'
           this.historialCompras = compras.filter(
             (c) =>
               Array.isArray(c.cuotas) &&
@@ -150,9 +149,44 @@ export class PerfilCrediticioComponent implements OnInit {
       });
   }
 
+  get correoCliente(): string {
+    return (
+      this.perfilCliente?.usuarioCliente ||
+      this.perfilCliente?.usuario_cliente ||
+      this.perfilCliente?.correo ||
+      ''
+    );
+  }
+
+  get etiquetaTipoTasa(): string {
+    const tipo = (this.perfilCliente?.tipoTasa || '').trim().toLowerCase();
+    if (tipo === 'nominal') {
+      const cap = (this.perfilCliente?.capitalizacion || '').trim().toLowerCase();
+      switch (cap) {
+        case 'diaria':
+        case 'diario':
+          return 'TND';
+        case 'mensual':
+          return 'TNM';
+        case 'bimestral':
+          return 'TNB';
+        case 'trimestral':
+          return 'TNT';
+        case 'cuatrimestral':
+          return 'TNC';
+        case 'semestral':
+          return 'TNS';
+        case 'anual':
+          return 'TNA';
+        default:
+          return 'TNM';
+      }
+    }
+    return 'TEA';
+  }
+
   get historialFiltrado(): CompraBackendDTO[] {
     return this.historialCompras.filter((item) => {
-      // Filtro 1: Intervalo de fechas
       if (this.filtroFechaDesde && item.fechaCompra < this.filtroFechaDesde) {
         return false;
       }
@@ -160,7 +194,6 @@ export class PerfilCrediticioComponent implements OnInit {
         return false;
       }
 
-      // Filtro 2: Monto menor o mayor a la cantidad ingresada
       const montoCompra = Number(item.monto ?? 0);
       if (
         this.filtroMontoCondicion !== 'TODOS' &&
@@ -205,10 +238,6 @@ export class PerfilCrediticioComponent implements OnInit {
   get porcentajeUtilizacion(): number {
     if (this.lineaMaxima <= 0) return 0;
     return Math.min(100, (this.creditoUtilizado / this.lineaMaxima) * 100);
-  }
-
-  get etiquetaTipoTasa(): string {
-    return this.perfilCliente?.tipoTasa?.toLowerCase() === 'nominal' ? 'TNA' : 'TEA';
   }
 
   formatearRecibo(item: CompraBackendDTO): string {

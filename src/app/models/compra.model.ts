@@ -5,7 +5,7 @@ export interface Compra {
   idCompra?: number;
   idCliente: number;
   idProductoServicio: number;
-  fechaCompra: string; // Formato ISO YYYY-MM-DD
+  fechaCompra: string; 
   monto: number;
   formaPago: FormaPagoCompra;
   numMeses: number;
@@ -46,7 +46,7 @@ export interface CuotaDetalleDTO {
 
 export interface CompraRequestDTO {
   idProductoServicio: number;
-  fechaCompra?: string | null; // Opcional (por defecto hoy en backend)
+  fechaCompra?: string | null; 
   formaPago: FormaPagoCompra;
   numMeses?: number | null;
 }

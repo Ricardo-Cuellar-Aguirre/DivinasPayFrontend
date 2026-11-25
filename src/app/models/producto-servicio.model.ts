@@ -21,7 +21,7 @@ export interface ProductoServicioRequestDTO {
   descripcion: string;
   unidadMedida: string;
   precioContado: number;
-  precioCredito: number; // Debe ser mayor a precioContado
+  precioCredito: number; 
   formaVenta?: FormaVentaProducto;
 }
 

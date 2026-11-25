@@ -1,15 +1,17 @@
 <div class="catalogo-page">
   <div class="catalogo-header">
     <div>
-      <span class="catalogo-kicker">DivinasPay · Catálogo activo</span>
+      
       <h1 class="catalogo-title">Productos y Servicios</h1>
     </div>
 
     <div class="catalogo-controls">
-      <div class="disponible-pill">
-        <span>Crédito disponible:</span>
-        <strong>S/ {{ limiteDisponible | number:'1.2-2' }}</strong>
-      </div>
+      @if (!esAdminTienda) {
+        <div class="disponible-pill">
+          <span>Crédito disponible:</span>
+          <strong>S/ {{ limiteDisponible | number:'1.2-2' }}</strong>
+        </div>
+      }
       <input
         type="text"
         [(ngModel)]="textoBusqueda"
@@ -17,8 +19,58 @@
         placeholder="Buscar servicio o producto..."
         class="search-input"
       />
+      @if (esAdminTienda) {
+        <button type="button" class="btn-crear-prod" (click)="abrirModalCrearProducto()">
+          Crear producto / servicio +
+        </button>
+      }
     </div>
   </div>
+
+  @if (esAdminTienda) {
+    <div class="admin-toolbar-row">
+      <div class="filtro-estado-group">
+        <button
+          type="button"
+          class="filtro-pill-btn"
+          [class.active]="filtroEstadoAdmin === 'TODOS'"
+          (click)="cambiarFiltroEstadoAdmin('TODOS')"
+        >
+          Todos ({{ productos.length }})
+        </button>
+        <button
+          type="button"
+          class="filtro-pill-btn"
+          [class.active]="filtroEstadoAdmin === 'HABILITADOS'"
+          (click)="cambiarFiltroEstadoAdmin('HABILITADOS')"
+        >
+          Habilitados ({{ totalHabilitadosCount }})
+        </button>
+        <button
+          type="button"
+          class="filtro-pill-btn"
+          [class.active]="filtroEstadoAdmin === 'DESHABILITADOS'"
+          (click)="cambiarFiltroEstadoAdmin('DESHABILITADOS')"
+        >
+          Deshabilitados ({{ totalDeshabilitadosCount }})
+        </button>
+      </div>
+    </div>
+
+    @if (mensajeExitoAdmin) {
+      <div class="alert-admin-banner exito">
+        <span>✓ {{ mensajeExitoAdmin }}</span>
+        <button type="button" (click)="mensajeExitoAdmin = null">✕</button>
+      </div>
+    }
+
+    @if (mensajeErrorAdmin) {
+      <div class="alert-admin-banner error">
+        <span>{{ mensajeErrorAdmin }}</span>
+        <button type="button" (click)="mensajeErrorAdmin = null">✕</button>
+      </div>
+    }
+  }
 
   @if (cargando) {
     <div class="estado-box">Cargando catálogo de la tienda...</div>
@@ -27,13 +79,16 @@
   } @else {
     <div class="productos-grid">
       @for (prod of productosFiltrados; track prod.idProductoServicio) {
-        <article class="producto-card">
+        <article class="producto-card" [class.bloqueada]="esAdminTienda && prod.estado === false">
           <div class="producto-img-wrap">
             <img
               [src]="prod.imagen || 'assets/images/logo-principal.jpg'"
               [alt]="prod.descripcion"
               class="producto-img"
             />
+            @if (esAdminTienda && prod.estado === false) {
+              <span class="badge-inhabilitado">Inhabilitado</span>
+            }
             <span class="unidad-badge">{{ prod.unidadMedida }}</span>
           </div>
 
@@ -58,13 +113,40 @@
               </div>
             </div>
 
-            <button
-              type="button"
-              class="btn-comprar-card"
-              (click)="abrirModalCompra(prod)"
-            >
-              Comprar
-            </button>
+            @if (!esAdminTienda) {
+              <button
+                type="button"
+                class="btn-comprar-card"
+                (click)="abrirModalCompra(prod)"
+              >
+                Comprar
+              </button>
+            } @else if (prod.estado === false) {
+              <button
+                type="button"
+                class="btn-card-habilitar"
+                (click)="iniciarHabilitarProducto(prod)"
+              >
+                Habilitar
+              </button>
+            } @else {
+              <div class="admin-card-actions">
+                <button
+                  type="button"
+                  class="btn-card-editar"
+                  (click)="abrirModalEditarProducto(prod)"
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  class="btn-card-eliminar"
+                  (click)="iniciarEliminarProducto(prod)"
+                >
+                  Eliminar
+                </button>
+              </div>
+            }
           </div>
         </article>
       }
@@ -72,9 +154,215 @@
   }
 </div>
 
-<!-- ==========================================================================
-     MODAL 1: ELEGIR MODALIDAD + CANTIDAD (QTY) + SIMULACIÓN AL CRÉDITO
-     ========================================================================== -->
+
+@if (modalFormAdminAbierto) {
+  <div class="modal-backdrop" (click)="cerrarModalFormAdmin()">
+    <div class="divinas-modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">Catálogo de tienda</span>
+          <h2 class="modal-title">
+            {{ modoFormAdmin === 'CREAR' ? 'Crear producto / servicio' : 'Editar producto / servicio' }}
+          </h2>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="cerrarModalFormAdmin()">✕</button>
+      </div>
+
+      @if (errorFormAdmin) {
+        <div class="modal-alert-error">{{ errorFormAdmin }}</div>
+      }
+
+      <div class="admin-form-grid">
+        <div class="admin-field full-col">
+          <label for="prodDesc">Descripción del producto o servicio (máx. 150) *</label>
+          <input
+            id="prodDesc"
+            type="text"
+            maxlength="150"
+            [(ngModel)]="formDescripcion"
+            placeholder="Ej. Tratamiento Capilar Nutritivo"
+            class="admin-input"
+          />
+        </div>
+
+        <div class="admin-field full-col">
+          <label for="prodImg">URL o ruta de imagen (máx. 255)</label>
+          <input
+            id="prodImg"
+            type="text"
+            maxlength="255"
+            [(ngModel)]="formImagen"
+            placeholder="Ej. assets/images/producto.jpg o https://..."
+            class="admin-input"
+          />
+        </div>
+
+        <div class="admin-field">
+          <label for="prodProv">Proveedor (máx. 80)</label>
+          <input
+            id="prodProv"
+            type="text"
+            maxlength="80"
+            [(ngModel)]="formProveedor"
+            placeholder="Ej. Distribuidora Belleza SAC"
+            class="admin-input"
+          />
+        </div>
+
+        <div class="admin-field">
+          <label for="prodMarca">Marca (máx. 50)</label>
+          <input
+            id="prodMarca"
+            type="text"
+            maxlength="50"
+            [(ngModel)]="formMarca"
+            placeholder="Ej. Wella / Cerave"
+            class="admin-input"
+          />
+        </div>
+
+        <div class="admin-field">
+          <label for="prodUnidad">Unidad de medida *</label>
+          <select id="prodUnidad" [(ngModel)]="formUnidadMedida" class="admin-input">
+            <option value="Servicio">Servicio</option>
+            <option value="Pack">Pack</option>
+            <option value="Unidad">Unidad</option>
+          </select>
+        </div>
+
+        <div class="admin-field">
+          <label for="prodForma">Forma de venta (automática)</label>
+          <input
+            id="prodForma"
+            type="text"
+            [value]="formFormaVentaCalculada"
+            disabled
+            class="admin-input locked"
+          />
+        </div>
+
+        <div class="admin-field">
+          <label for="prodPContado">Precio al contado (S/) *</label>
+          <input
+            id="prodPContado"
+            type="number"
+            min="0.01"
+            step="0.01"
+            [(ngModel)]="formPrecioContado"
+            class="admin-input"
+          />
+        </div>
+
+        <div class="admin-field">
+          <label for="prodPCredito">Precio al crédito (mayor al contado) *</label>
+          <input
+            id="prodPCredito"
+            type="number"
+            min="0.01"
+            step="0.01"
+            [(ngModel)]="formPrecioCredito"
+            class="admin-input"
+          />
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secundario" (click)="cerrarModalFormAdmin()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-primario"
+          [disabled]="guardandoProducto"
+          (click)="guardarProductoAdmin()"
+        >
+          {{ guardandoProducto ? 'Guardando...' : (modoFormAdmin === 'CREAR' ? 'Crear' : 'Guardar cambios') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+@if (modalConfirmarEliminarAbierto && productoAEliminar) {
+  <div class="modal-backdrop" (click)="cerrarModalEliminarProducto()">
+    <div class="divinas-modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">Inhabilitar del catálogo</span>
+          <h2 class="modal-title">Eliminar "{{ productoAEliminar.descripcion }}"</h2>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="cerrarModalEliminarProducto()">✕</button>
+      </div>
+
+      @if (verificandoCreditos) {
+        <p class="confirm-msg-normal">Verificando créditos activos vinculados a este producto...</p>
+      } @else if (creditosActivosRelacionados > 0) {
+        <div class="aviso-creditos-activos">
+          <strong>Aviso importante:</strong> Existen <strong>{{ creditosActivosRelacionados }} crédito(s) activo(s)</strong>
+          de clientes relacionados a este producto/servicio. Al confirmar, el producto
+          <strong>únicamente se ocultará de la tienda (estado = false) mas no quedará eliminado</strong>
+          de la base de datos, por lo que los clientes podrán seguir completando sus cuotas y pagos con normalidad.
+        </div>
+      } @else {
+        <p class="confirm-msg-normal">
+          ¿Confirmas que deseas ocultar <strong>{{ productoAEliminar.descripcion }}</strong> de la tienda?
+          Su estado pasará a <strong>false</strong> y dejará de estar disponible para nuevas compras.
+        </p>
+      }
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secundario" (click)="cerrarModalEliminarProducto()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-danger-confirm"
+          [disabled]="verificandoCreditos || procesandoEstado"
+          (click)="confirmarEliminarProducto()"
+        >
+          {{ procesandoEstado ? 'Procesando...' : 'Confirmar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+@if (modalConfirmarHabilitarAbierto && productoAHabilitar) {
+  <div class="modal-backdrop" (click)="cerrarModalHabilitarProducto()">
+    <div class="divinas-modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">Reactivar en catálogo</span>
+          <h2 class="modal-title">Habilitar "{{ productoAHabilitar.descripcion }}"</h2>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="cerrarModalHabilitarProducto()">✕</button>
+      </div>
+
+      <p class="confirm-msg-normal">
+        ¿Confirmas que deseas habilitar nuevamente <strong>{{ productoAHabilitar.descripcion }}</strong>
+        en el catálogo activo de la tienda?
+      </p>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secundario" (click)="cerrarModalHabilitarProducto()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-primario"
+          [disabled]="procesandoEstado"
+          (click)="confirmarHabilitarProducto()"
+        >
+          {{ procesandoEstado ? 'Habilitando...' : 'Confirmar habilitar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
 @if (modalCompraAbierto && productoSeleccionado) {
   <div class="modal-backdrop" (click)="cerrarModalCompra()">
     <div
@@ -105,7 +393,6 @@
           </span>
         </div>
 
-        <!-- Selector de Cantidad a comprar (Qty) -->
         <div class="qty-control-box">
           <span class="qty-lbl">Cantidad (Qty)</span>
           <div class="qty-stepper">
@@ -322,9 +609,7 @@
   </div>
 }
 
-<!-- ==========================================================================
-     MODAL 2: VENTANA DE COMPRA REALIZADA CON ÉXITO
-     ========================================================================== -->
+
 @if (modalExitoAbierto && compraExitosa) {
   <div class="modal-backdrop" (click)="cerrarModalExito()">
     <div class="divinas-modal-card exito-card" (click)="$event.stopPropagation()">

@@ -1,135 +1,330 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators
-} from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { SesionAlmacenada } from '../../interceptor/auth.interceptor';
-import { ClienteResponseDTO } from '../../models/cliente.model';
-import { ErrorResponse } from '../../models/sistema.model';
-import { TiendaResponseDTO, TiendaUpdateDTO } from '../../models/tienda.model';
-import { AuthService } from '../../services/auth.service';
-import { ClienteService } from '../../services/cliente.service';
-import { TiendaService } from '../../services/tienda.service';
+import { finalize, timeout } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import { CompraService } from '../../services/compra.service';
 
 @Component({
   selector: 'app-configuracion',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './configuracion.component.html',
   styleUrl: './configuracion.component.css'
 })
 export class ConfiguracionComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
-  private readonly authService = inject(AuthService);
-  private readonly clienteService = inject(ClienteService);
-  private readonly tiendaService = inject(TiendaService);
+  private readonly compraService = inject(CompraService);
+  private readonly http = inject(HttpClient);
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  sesion: SesionAlmacenada | null = null;
-  perfilCliente: ClienteResponseDTO | null = null;
-  tiendaInfo: TiendaResponseDTO | null = null;
+  rolUsuario: 'CLIENTE' | 'ADMIN_TIENDA' | 'ADMIN_SISTEMA' = 'CLIENTE';
+  idTienda = 1;
+  idCliente = 1;
+  nombreTienda = 'Divinas Salón & Spa';
 
-  editandoTienda = false;
-  guardando = false;
+  perfilOriginal: any = null;
   cargando = true;
+  editando = false;
+  guardando = false;
+
   mensajeExito: string | null = null;
   mensajeError: string | null = null;
 
-  tiendaForm!: FormGroup;
+  // Campos del formulario
+  formNombre = '';
+  formCorreo = '';
+  formPassword = '';
+  formTelefono = '';
 
   ngOnInit(): void {
-    this.sesion = this.authService.sesionActual;
-    if (!this.sesion) return;
+    this.detectarSesion();
+    this.cargarPerfil();
+  }
 
-    this.tiendaForm = this.fb.group({
-      nombreTienda: ['', [Validators.required, Validators.maxLength(100)]],
-      direccion: ['', [Validators.required, Validators.maxLength(150)]],
-      telefono: ['', [Validators.required, Validators.pattern(/^[0-9]{9}$/)]],
-      usuarioAdmin: ['', [Validators.required, Validators.maxLength(30)]]
-    });
+  get fechaHoyTexto(): string {
+    const hoy = new Date();
+    const d = String(hoy.getDate()).padStart(2, '0');
+    const m = String(hoy.getMonth() + 1).padStart(2, '0');
+    const y = hoy.getFullYear();
+    return `Hoy, ${d}/${m}/${y}`;
+  }
 
-    if (this.sesion.rol === 'CLIENTE' && this.sesion.idTienda && this.sesion.idCliente) {
-      this.cargarPerfilCliente(this.sesion.idTienda, this.sesion.idCliente);
-    } else if (this.sesion.rol === 'ADMIN_TIENDA' && this.sesion.idTienda) {
-      this.cargarDatosTienda(this.sesion.idTienda);
-    } else {
-      this.cargando = false;
+  get esCliente(): boolean {
+    return this.rolUsuario === 'CLIENTE';
+  }
+
+  get esAdminTienda(): boolean {
+    return this.rolUsuario === 'ADMIN_TIENDA';
+  }
+
+  get puedeVolverAClientes(): boolean {
+    return this.rolUsuario === 'ADMIN_TIENDA' || this.rolUsuario === 'ADMIN_SISTEMA';
+  }
+
+  private detectarSesion(): void {
+    for (const storage of [sessionStorage, localStorage]) {
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (!key) continue;
+        const raw = storage.getItem(key);
+        if (!raw) continue;
+
+        if (raw.trim().startsWith('{')) {
+          try {
+            const obj = JSON.parse(raw);
+            if (obj?.rol) this.rolUsuario = obj.rol;
+            if (obj?.idTienda != null) this.idTienda = Number(obj.idTienda);
+            if (obj?.idCliente != null) this.idCliente = Number(obj.idCliente);
+            if (obj?.nombreTienda) this.nombreTienda = obj.nombreTienda;
+          } catch {
+            // Ignorar
+          }
+        } else if (raw.includes('eyJ')) {
+          const claims = this.decodificarJwt(raw);
+          if (claims) {
+            const rolToken = String(claims.rol || claims.role || '').replace('ROLE_', '');
+            if (rolToken === 'ADMIN_TIENDA' || rolToken === 'ADMIN_SISTEMA' || rolToken === 'CLIENTE') {
+              this.rolUsuario = rolToken;
+            }
+            if (claims.idTienda != null) this.idTienda = Number(claims.idTienda);
+            if (claims.idCliente != null) this.idCliente = Number(claims.idCliente);
+          }
+        }
+      }
+    }
+
+    const tiendaRaw = localStorage.getItem('divinas_tienda_asignada');
+    if (tiendaRaw) {
+      try {
+        const t = JSON.parse(tiendaRaw);
+        if (t?.nombreTienda) this.nombreTienda = t.nombreTienda;
+        if (t?.idTienda) this.idTienda = Number(t.idTienda);
+      } catch {
+        // Ignorar
+      }
     }
   }
 
-  private cargarPerfilCliente(idTienda: number, idCliente: number): void {
-    this.clienteService.obtener(idTienda, idCliente).subscribe({
-      next: (cli) => {
-        this.perfilCliente = cli;
-        this.cargando = false;
-      },
-      error: (err: HttpErrorResponse) => {
-        this.cargando = false;
-        const body = err.error as ErrorResponse | undefined;
-        this.mensajeError = body?.mensaje || 'No se pudo cargar tu perfil.';
-      }
-    });
-
-    this.tiendaService.obtener(idTienda).subscribe({
-      next: (t) => (this.tiendaInfo = t),
-      error: () => (this.tiendaInfo = null)
-    });
+  private decodificarJwt(token: string): any | null {
+    try {
+      const limpio = token.replace(/^Bearer\s+/i, '').trim();
+      const partes = limpio.split('.');
+      if (partes.length !== 3) return null;
+      let base64 = partes[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (base64.length % 4 !== 0) base64 += '=';
+      return JSON.parse(atob(base64));
+    } catch {
+      return null;
+    }
   }
 
-  private cargarDatosTienda(idTienda: number): void {
-    this.tiendaService.obtener(idTienda).subscribe({
-      next: (t) => {
-        this.tiendaInfo = t;
-        this.tiendaForm.patchValue({
-          nombreTienda: t.nombreTienda,
-          direccion: t.direccion,
-          telefono: t.telefono,
-          usuarioAdmin: t.usuarioAdmin
+  cargarPerfil(): void {
+    this.cargando = true;
+
+    if (this.esCliente) {
+      this.compraService
+        .obtenerPerfilCliente()
+        .pipe(
+          timeout(8000),
+          finalize(() => {
+            this.cargando = false;
+            this.cdr.detectChanges();
+          })
+        )
+        .subscribe({
+          next: (cli) => {
+            this.perfilOriginal = cli;
+            this.idCliente = cli?.idCliente ?? this.idCliente;
+            this.idTienda = cli?.tienda?.idTienda ?? cli?.idTienda ?? this.idTienda;
+            if (cli?.tienda?.nombreTienda) {
+              this.nombreTienda = cli.tienda.nombreTienda;
+            }
+            this.sincronizarFormularioDesdePerfil();
+            this.cdr.detectChanges();
+          },
+          error: () => {
+            this.mensajeError = 'No se pudo cargar la información del cliente.';
+            this.cdr.detectChanges();
+          }
         });
-        this.cargando = false;
-      },
-      error: (err: HttpErrorResponse) => {
-        this.cargando = false;
-        const body = err.error as ErrorResponse | undefined;
-        this.mensajeError = body?.mensaje || 'No se pudieron cargar los datos de la tienda.';
-      }
-    });
+    } else {
+      this.http
+        .get(`${environment.apiUrl}/tiendas/${this.idTienda}`)
+        .pipe(
+          timeout(8000),
+          finalize(() => {
+            this.cargando = false;
+            this.cdr.detectChanges();
+          })
+        )
+        .subscribe({
+          next: (tienda: any) => {
+            this.perfilOriginal = tienda;
+            this.nombreTienda = tienda?.nombreTienda || this.nombreTienda;
+            this.formNombre = tienda?.nombreAdmin || tienda?.nombreTienda || 'Administrador';
+            this.formCorreo = tienda?.correoAdmin || tienda?.usuarioAdmin || 'admin@divinas.pe';
+            this.formTelefono = tienda?.telefono || tienda?.telefonoTienda || '';
+            this.formPassword = '';
+            this.cdr.detectChanges();
+          },
+          error: () => {
+            this.cargando = false;
+            this.cdr.detectChanges();
+          }
+        });
+    }
   }
 
-  guardarCambiosTienda(): void {
-    if (!this.tiendaInfo || this.tiendaForm.invalid) {
-      this.tiendaForm.markAllAsTouched();
+  private sincronizarFormularioDesdePerfil(): void {
+    if (!this.perfilOriginal) return;
+    this.formNombre =
+      this.perfilOriginal.nombreCliente ||
+      this.perfilOriginal.nombre_cliente ||
+      this.perfilOriginal.nombre ||
+      '';
+    this.formCorreo =
+      this.perfilOriginal.usuarioCliente ||
+      this.perfilOriginal.usuario_cliente ||
+      this.perfilOriginal.correo ||
+      '';
+    this.formTelefono = this.perfilOriginal.telefono || '';
+    this.formPassword = '';
+  }
+
+  activarEdicion(): void {
+    this.mensajeExito = null;
+    this.mensajeError = null;
+    this.sincronizarFormularioDesdePerfil();
+    this.editando = true;
+    this.cdr.detectChanges();
+  }
+
+  cancelarEdicion(): void {
+    this.editando = false;
+    this.mensajeError = null;
+    this.sincronizarFormularioDesdePerfil();
+    this.cdr.detectChanges();
+  }
+
+  guardarCambios(): void {
+    if (this.guardando) return;
+    this.mensajeError = null;
+    this.mensajeExito = null;
+
+    if (!this.formNombre.trim()) {
+      this.mensajeError = 'El nombre no puede estar vacío.';
+      return;
+    }
+    if (!this.formCorreo.trim()) {
+      this.mensajeError = 'El correo electrónico no puede estar vacío.';
       return;
     }
 
     this.guardando = true;
-    this.mensajeError = null;
-    this.mensajeExito = null;
+    this.cdr.detectChanges();
 
-    const val = this.tiendaForm.value;
-    const dto: TiendaUpdateDTO = {
-      nombreTienda: val.nombreTienda.trim(),
-      direccion: val.direccion.trim(),
-      telefono: val.telefono.trim(),
-      usuarioAdmin: val.usuarioAdmin.trim()
-    };
+    if (this.esCliente) {
+      const payload: Record<string, string> = {
+        nombreCliente: this.formNombre.trim(),
+        usuarioCliente: this.formCorreo.trim()
+      };
 
-    this.tiendaService.actualizar(this.tiendaInfo.idTienda, dto).subscribe({
-      next: (actualizada) => {
-        this.tiendaInfo = actualizada;
-        this.guardando = false;
-        this.editandoTienda = false;
-        this.mensajeExito = 'Los datos del establecimiento se actualizaron correctamente.';
-      },
-      error: (err: HttpErrorResponse) => {
-        this.guardando = false;
-        const body = err.error as ErrorResponse | undefined;
-        this.mensajeError = body?.mensaje || 'Error al actualizar los datos de la tienda.';
+      if (this.formPassword && this.formPassword.trim().length > 0) {
+        payload['passwordCliente'] = this.formPassword.trim();
       }
-    });
+
+      this.http
+        .put(`${environment.apiUrl}/tiendas/${this.idTienda}/clientes/${this.idCliente}/perfil`, payload)
+        .pipe(
+          timeout(8000),
+          finalize(() => {
+            this.guardando = false;
+            this.cdr.detectChanges();
+          })
+        )
+        .subscribe({
+          next: (actualizado: any) => {
+            this.perfilOriginal = { ...this.perfilOriginal, ...actualizado };
+            this.actualizarDatosEnStorage(this.formNombre.trim(), this.formCorreo.trim());
+            this.editando = false;
+            this.formPassword = '';
+            this.mensajeExito = 'Tus datos personales se actualizaron correctamente.';
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            this.mensajeError =
+              err?.error?.mensaje || 'No se pudieron guardar los cambios en el servidor.';
+            this.cdr.detectChanges();
+          }
+        });
+    } else if (this.esAdminTienda) {
+      const payloadTienda: any = {
+        ...this.perfilOriginal,
+        nombreAdmin: this.formNombre.trim(),
+        correoAdmin: this.formCorreo.trim(),
+        telefono: this.formTelefono.trim()
+      };
+      if (this.formPassword && this.formPassword.trim().length > 0) {
+        payloadTienda.passwordAdmin = this.formPassword.trim();
+      }
+
+      this.http
+        .put(`${environment.apiUrl}/tiendas/${this.idTienda}`, payloadTienda)
+        .pipe(
+          timeout(8000),
+          finalize(() => {
+            this.guardando = false;
+            this.cdr.detectChanges();
+          })
+        )
+        .subscribe({
+          next: (resp: any) => {
+            this.perfilOriginal = resp || payloadTienda;
+            this.editando = false;
+            this.formPassword = '';
+            this.mensajeExito = 'Los datos del administrador se actualizaron correctamente.';
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            this.mensajeError =
+              err?.error?.mensaje || 'No se pudieron actualizar los datos de la tienda.';
+            this.cdr.detectChanges();
+          }
+        });
+    }
+  }
+
+  private actualizarDatosEnStorage(nuevoNombre: string, nuevoCorreo: string): void {
+    for (const storage of [sessionStorage, localStorage]) {
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (!key) continue;
+        const raw = storage.getItem(key);
+        if (!raw || !raw.trim().startsWith('{')) continue;
+        try {
+          const obj = JSON.parse(raw);
+          let modificado = false;
+          if (obj.nombreCliente !== undefined) {
+            obj.nombreCliente = nuevoNombre;
+            modificado = true;
+          }
+          if (obj.nombre !== undefined) {
+            obj.nombre = nuevoNombre;
+            modificado = true;
+          }
+          if (obj.usuarioCliente !== undefined) {
+            obj.usuarioCliente = nuevoCorreo;
+            modificado = true;
+          }
+          if (modificado) {
+            storage.setItem(key, JSON.stringify(obj));
+          }
+        } catch {
+          // Ignorar
+        }
+      }
+    }
   }
 }

@@ -37,7 +37,7 @@ export class ObtenerCuentaComponent implements OnInit {
   enviando = false;
   errorMensaje: string | null = null;
 
-  // Campos del formulario
+ 
   idTiendaSeleccionada: number | null = null;
   nombre = '';
   email = '';
@@ -45,7 +45,6 @@ export class ObtenerCuentaComponent implements OnInit {
   confirmarPassword = '';
   recordarAcceso = true;
 
-  // Visibilidad de contraseñas
   mostrarPassword = false;
   mostrarConfirmarPassword = false;
 
@@ -118,7 +117,7 @@ export class ObtenerCuentaComponent implements OnInit {
     const tiendaObj = this.tiendasDisponibles.find((t) => t.idTienda === idTienda);
     const nombreTienda = tiendaObj?.nombreTienda ?? `Tienda #${idTienda}`;
 
-    // Valores crediticios iniciales requeridos por las restricciones CHECK de la tabla cliente
+   
     const payload: ClienteRequestDTO = {
       nombreCliente: nombreLimpio,
       tipoTasa: 'Efectiva',
@@ -136,7 +135,7 @@ export class ObtenerCuentaComponent implements OnInit {
     this.enviando = true;
     this.cdr.detectChanges();
 
-    // Endpoint público AuthController.registrarCliente -> inserta en la tabla cliente
+    
     this.http
       .post<ClienteResponseDTO>(
         `${environment.apiUrl}/auth/registro/cliente/${idTienda}`,
@@ -188,7 +187,7 @@ export class ObtenerCuentaComponent implements OnInit {
       mapa[usuario.toLowerCase()] = { idTienda, nombreTienda };
       localStorage.setItem(STORAGE_TIENDA_POR_USUARIO, JSON.stringify(mapa));
     } catch {
-      // Ignorar errores de almacenamiento local
+      
     }
 
     this.tiendaActivaService.seleccionarTienda({ idTienda, nombreTienda });

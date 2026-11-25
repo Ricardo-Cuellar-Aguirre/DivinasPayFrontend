@@ -55,10 +55,7 @@ export class UbicarTiendasComponent implements OnInit {
     this.cargarTiendas();
   }
 
-  /**
-   * Obtiene el idTienda con el que fue creada la cuenta del cliente.
-   * No permite cambiarlo por otra tienda.
-   */
+  
   private resolverIdTiendaDeCuenta(): number | null {
     const sesion = this.authService.sesionActual;
     if (sesion?.idTienda) {
@@ -86,7 +83,7 @@ export class UbicarTiendasComponent implements OnInit {
         }
       }
     } catch {
-      // Ignorar errores de parseo
+     
     }
 
     return null;

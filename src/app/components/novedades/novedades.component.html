@@ -1,0 +1,186 @@
+<div class="novedades-page">
+  <header class="novedades-header">
+    <h1>Lo Nuevo en DivinasPay</h1>
+    <p>Échale un vistazo a las novedades que tenemos para ti</p>
+  </header>
+
+ 
+
+  <div class="novedades-grid">
+
+    <article class="novedad-card">
+      <div>
+
+        <h2>Simulación de precio libre de producto</h2>
+        <p>
+          Calcula al instante cuánto pagarías por cuota y el total acumulado para cualquier monto usando tu tasa de interés vigente .
+        </p>
+      </div>
+
+      <button type="button" class="card-action-link" (click)="abrirSimuladorLibre()">
+        Simular pago →
+      </button>
+    </article>
+
+ 
+    <article class="novedad-card">
+      <div>
+    
+        <h2>Nuevos packs de cuidado post-alisado</h2>
+        <p>
+          Explora los diversos productos de marcas nacionales e internacionales que tienes a tu disposición.
+        </p>
+      </div>
+
+      <a routerLink="/productos" class="card-action-link">
+        Ver Productos y Servicios →
+      </a>
+    </article>
+
+ 
+    <article class="novedad-card">
+      <div>
+        
+        <h2>Postula a nueva línea de crédito</h2>
+        <p>
+          ¿Necesitas mayor capacidad para tus tratamientos? Envía tu solicitud indicando el nuevo monto que deseas para tu línea de crédito.
+        </p>
+      </div>
+
+      <button type="button" class="card-action-link" (click)="abrirModalPostulacion()">
+        Solicitar ahora →
+      </button>
+    </article>
+  </div>
+</div>
+
+
+@if (modalSimuladorAbierto) {
+  <div class="modal-backdrop" (click)="cerrarSimuladorLibre()">
+    <div class="divinas-modal" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div>
+          <span class="modal-kicker">Cálculo referencial · {{ etiquetaTasaCliente }}</span>
+          <h2>Simulación de precio libre de producto</h2>
+        </div>
+        <button type="button" class="btn-close" (click)="cerrarSimuladorLibre()">✕</button>
+      </div>
+
+      <div class="disclaimer-box">
+        ⓘ <strong>Simulación momentánea:</strong> Este cálculo es únicamente referencial para que evalúes tus cuotas; no registra compras ni modifica ningún dato en la base de datos.
+      </div>
+
+      <div class="sim-form-grid">
+        <div class="form-field">
+          <label for="montoLibreInp">Monto a pagar (S/)</label>
+          <input
+            id="montoLibreInp"
+            type="number"
+            min="1"
+            step="0.01"
+            [(ngModel)]="montoLibre"
+            (input)="recalcularSimulacionLibre()"
+            placeholder="Ej. 250.00"
+            class="modal-input"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="cuotasLibreSel">Número de cuotas (meses)</label>
+          <select
+            id="cuotasLibreSel"
+            [(ngModel)]="cuotasLibre"
+            (change)="recalcularSimulacionLibre()"
+            class="modal-input"
+          >
+            @for (m of opcionesCuotas; track m) {
+              <option [ngValue]="m">{{ m }} meses</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="resultados-sim-grid">
+        <div class="res-box highlight">
+          <span>Monto de cada cuota</span>
+          <strong>S/ {{ cuotaCalculada | number:'1.2-2' }}</strong>
+          <small>{{ cuotasLibre }} cuotas fijas mensuales</small>
+        </div>
+
+        <div class="res-box">
+          <span>Total a pagar (todas las cuotas)</span>
+          <strong>S/ {{ totalAPagarCalculado | number:'1.2-2' }}</strong>
+          <small>Incluye S/ {{ interesesTotalesCalculados | number:'1.2-2' }} de intereses</small>
+        </div>
+      </div>
+
+      <div class="tasa-detalle-strip">
+        <span>Tasa aplicada: <strong>{{ etiquetaTasaCliente }}</strong></span>
+        <span>TEA equiv.: <strong>{{ teaAplicada | number:'1.2-2' }}%</strong> · TEM: <strong>{{ temAplicada | number:'1.2-2' }}%</strong></span>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-primario" (click)="cerrarSimuladorLibre()">
+          Cerrar simulación
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+@if (modalPostulacionAbierto) {
+  <div class="modal-backdrop" (click)="cerrarModalPostulacion()">
+    <div class="divinas-modal" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div>
+          <span class="modal-kicker">Ampliación de crédito</span>
+          <h2>Postula a nueva línea de crédito</h2>
+        </div>
+        <button type="button" class="btn-close" (click)="cerrarModalPostulacion()">✕</button>
+      </div>
+
+      <div class="linea-actual-pill">
+        <span>Tu línea de crédito máxima actual:</span>
+        <strong>S/ {{ lineaActual | number:'1.2-2' }}</strong>
+      </div>
+
+      @if (errorPostulacion) {
+        <div class="error-box">{{ errorPostulacion }}</div>
+      }
+
+      <div class="form-field" style="margin-bottom: 1rem;">
+        <label for="montoNuevaLineaInp">Monto deseado para tu nueva línea de crédito (S/)</label>
+        <input
+          id="montoNuevaLineaInp"
+          type="number"
+          [min]="lineaActual + 1"
+          step="50"
+          [(ngModel)]="montoNuevaLinea"
+          placeholder="Ej. 2500.00"
+          class="modal-input"
+        />
+      </div>
+
+      <div class="form-field">
+        <label for="motivoPostulacionInp">Motivo de solicitud (opcional)</label>
+        <input
+          id="motivoPostulacionInp"
+          type="text"
+          [(ngModel)]="motivoPostulacion"
+          placeholder="Ej. Adquisición de paquetes de tratamiento capilar"
+          class="modal-input"
+        />
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secundario" (click)="cerrarModalPostulacion()">
+          Cancelar
+        </button>
+        <button type="button" class="btn-primario" (click)="registrarPostulacion()">
+          Postular
+        </button>
+      </div>
+    </div>
+  </div>
+}

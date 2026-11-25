@@ -1,8 +1,8 @@
 <div class="auth-split-layout">
-  <!-- Panel Izquierdo: Formulario de Registro de Cliente -->
+
   <div class="auth-left-panel">
     <div class="auth-form-container">
-      <!-- Marca DivinasPay -->
+    
       <div class="brand-header">
         <img
           src="assets/images/logo-divinas.png"
@@ -22,7 +22,7 @@
       }
 
       <form class="auth-form" (ngSubmit)="registrarCuenta()">
-        <!-- Seleccionar tienda (solo tiendas activas, inmutable tras crear la cuenta) -->
+        
         <div class="form-field">
           <div class="label-row">
             <label for="seleccionarTienda" class="field-label">Seleccionar tienda</label>
@@ -57,7 +57,6 @@
           </div>
         </div>
 
-        <!-- Nombre -->
         <div class="form-field">
           <label for="nombreInput" class="field-label">Nombre</label>
           <input
@@ -72,7 +71,7 @@
           />
         </div>
 
-        <!-- email (usuario_cliente en BD, máx. 30 caracteres) -->
+       
         <div class="form-field">
           <div class="label-row">
             <label for="emailInput" class="field-label">email</label>
@@ -97,7 +96,7 @@
           />
         </div>
 
-        <!-- contraseña -->
+       
         <div class="form-field">
           <label for="passwordInput" class="field-label">contraseña</label>
           <div class="password-wrapper">
@@ -126,7 +125,7 @@
           </div>
         </div>
 
-        <!-- Confirmar contraseña -->
+       
         <div class="form-field">
           <label for="confirmarPasswordInput" class="field-label">Confirmar contraseña</label>
           <div class="password-wrapper">
@@ -155,7 +154,7 @@
           </div>
         </div>
 
-        <!-- Botón Registrarse -->
+       
         <button
           type="submit"
           class="btn-registrarse"
@@ -164,7 +163,7 @@
           {{ enviando ? 'Registrando...' : 'Registrarse' }}
         </button>
 
-        <!-- Fila inferior: Recordar acceso -->
+       
         <div class="form-bottom-row">
           <label class="remember-label">
             <input
@@ -181,7 +180,7 @@
     </div>
   </div>
 
-  <!-- Panel Derecho: Imagen lateral sin "Seguro y privado" ni "Soporte 24/7" -->
+ 
   <div class="auth-right-panel">
     <img
       src="assets/images/logo-principal.jpg"

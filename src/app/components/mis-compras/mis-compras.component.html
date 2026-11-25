@@ -13,9 +13,7 @@
     </div>
   }
 
-  <!-- ========================================================================
-       TARJETAS SUPERIORES (Línea de crédito y Parámetros del cliente)
-       ======================================================================== -->
+ 
   <div class="top-cards-grid">
     <section class="panel-card">
       <div class="cliente-head">
@@ -26,7 +24,7 @@
             <span>&#64;{{ perfilCliente?.correo || 'cliente@divinas.pe' }}</span>
           </div>
         </div>
-        <span class="badge-calificado">✓ Cliente Frecuente / Calificado</span>
+        <span class="badge-calificado">Activo</span>
       </div>
 
       <div class="linea-kpis-grid">
@@ -87,9 +85,7 @@
     </section>
   </div>
 
-  <!-- ========================================================================
-       PESTAÑAS: CRÉDITOS ACTIVOS E HISTORIAL DE COMPRAS
-       ======================================================================== -->
+
   <div class="tabs-bar">
     <button
       type="button"
@@ -115,9 +111,7 @@
   @if (cargando) {
     <div class="panel-card empty-box">Cargando operaciones del cliente...</div>
   } @else if (tabActiva === 'ACTIVOS') {
-    <!-- ======================================================================
-         PESTAÑA 1: CRÉDITOS ACTIVOS
-         ====================================================================== -->
+    
     @if (creditosActivos.length === 0) {
       <div class="panel-card empty-box">
         No tienes créditos activos con cuotas pendientes.
@@ -201,9 +195,7 @@
       </div>
     }
   } @else {
-    <!-- ======================================================================
-         PESTAÑA 2: HISTORIAL DE COMPRAS (5 COLUMNAS + 2 FILTROS: FECHAS Y MONTO)
-         ====================================================================== -->
+   
     <section class="panel-card">
       <div class="historial-toolbar">
         <div>
@@ -214,7 +206,7 @@
         </div>
 
         <div class="filtros-row">
-          <!-- Filtro 1: Intervalo de fechas -->
+          
           <div class="filtro-group">
             <label for="fDesde">Fecha desde</label>
             <input
@@ -235,7 +227,7 @@
             />
           </div>
 
-          <!-- Filtro 2: Monto menor o mayor -->
+         
           <div class="filtro-group">
             <label for="fCond">Filtrar monto</label>
             <select
@@ -315,9 +307,7 @@
   }
 </div>
 
-<!-- ==========================================================================
-     MODAL DE PAGO DE CUOTA
-     ========================================================================== -->
+
 @if (modalPagoAbierto && compraAPagar && cuotaAPagar) {
   <div class="modal-backdrop" (click)="cerrarModalPago()">
     <div class="pago-modal-card" (click)="$event.stopPropagation()">

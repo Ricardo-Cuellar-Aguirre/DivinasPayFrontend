@@ -1,7 +1,7 @@
 import { FormaPagoCompra } from './compra.model';
 
 export interface PagoRequestDTO {
-  fechaPago?: string | null; // Formato ISO YYYY-MM-DD
+  fechaPago?: string | null; 
 }
 
 export interface PagoCompraDTO {

@@ -12,10 +12,28 @@
   </div>
 
   @if (mensajeExito) {
-    <div class="alert-success">{{ mensajeExito }}</div>
+    <div class="alert-success" style="display: flex; justify-content: space-between; align-items: center;">
+      <span>✓ {{ mensajeExito }}</span>
+      <button
+        type="button"
+        (click)="mensajeExito = null"
+        style="background: transparent; border: none; font-weight: 700; cursor: pointer;"
+      >
+        ✕
+      </button>
+    </div>
   }
   @if (mensajeError) {
-    <div class="alert-error">{{ mensajeError }}</div>
+    <div class="alert-error" style="display: flex; justify-content: space-between; align-items: center;">
+      <span>{{ mensajeError }}</span>
+      <button
+        type="button"
+        (click)="mensajeError = null"
+        style="background: transparent; border: none; font-weight: 700; cursor: pointer;"
+      >
+        ✕
+      </button>
+    </div>
   }
 
   <div class="dp-card">
@@ -87,7 +105,7 @@
     <div class="dp-card modal-box" (click)="$event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3>{{ tiendaEditando ? 'Editar Tienda' : 'Registrar Nueva Tienda' }}</h3>
-        <button type="button" class="btn-secondary" (click)="cerrarModal()">✕</button>
+        <button type="button" class="btn-secondary" (click)="cerrarModal()" [disabled]="guardando">✕</button>
       </div>
 
       @if (errorFormulario) {
@@ -156,7 +174,9 @@
         }
 
         <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;">
-          <button type="button" class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
+          <button type="button" class="btn-secondary" (click)="cerrarModal()" [disabled]="guardando">
+            Cancelar
+          </button>
           <button type="submit" class="btn-primary" [disabled]="guardando">
             {{ guardando ? 'Guardando...' : 'Guardar tienda' }}
           </button>

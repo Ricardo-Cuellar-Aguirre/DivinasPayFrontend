@@ -24,10 +24,78 @@
   }
 
   <div class="dp-card">
+
+    <div class="auditoria-filtros-bar">
+      <div class="filtro-item">
+        <label for="audFechaDesde">Fecha desde</label>
+        <input
+          id="audFechaDesde"
+          type="date"
+          [(ngModel)]="filtroFechaDesde"
+          (change)="aplicarFiltros()"
+          class="form-control"
+        />
+      </div>
+
+      <div class="filtro-item">
+        <label for="audFechaHasta">Fecha hasta</label>
+        <input
+          id="audFechaHasta"
+          type="date"
+          [(ngModel)]="filtroFechaHasta"
+          (change)="aplicarFiltros()"
+          class="form-control"
+        />
+      </div>
+
+      <div class="filtro-item">
+        <label for="audFiltroRol">Rol</label>
+        <select
+          id="audFiltroRol"
+          [(ngModel)]="filtroRol"
+          (change)="aplicarFiltros()"
+          class="form-control"
+        >
+          <option value="TODOS">Todos los roles</option>
+          @for (rol of rolesDisponibles; track rol) {
+            <option [value]="rol">{{ rol }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filtro-item">
+        <label for="audFiltroAccion">Acción</label>
+        <select
+          id="audFiltroAccion"
+          [(ngModel)]="filtroAccion"
+          (change)="aplicarFiltros()"
+          class="form-control"
+        >
+          <option value="TODAS">Todas las acciones</option>
+          @for (acc of accionesDisponibles; track acc) {
+            <option [value]="acc">{{ acc }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filtro-item">
+        <button type="button" class="btn-secondary" (click)="limpiarFiltros()">
+          Limpiar filtros
+        </button>
+      </div>
+    </div>
+
+    <div class="auditoria-resumen-bar">
+      <span>
+        Mostrando <strong>{{ operacionesFiltradas.length }}</strong> de
+        <strong>{{ operaciones.length }}</strong> operaciones registradas
+      </span>
+    </div>
+
     @if (cargando) {
       <div class="empty-state">Cargando registros de auditoría...</div>
-    } @else if (operaciones.length === 0) {
-      <div class="empty-state">No existen operaciones registradas aún.</div>
+    } @else if (operacionesFiltradas.length === 0) {
+      <div class="empty-state">No existen operaciones que coincidan con los filtros aplicados.</div>
     } @else {
       <div class="table-responsive">
         <table class="dp-table">
@@ -42,7 +110,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (op of operaciones; track op.idOperacion) {
+            @for (op of operacionesFiltradas; track op.idOperacion) {
               <tr>
                 <td>{{ op.fechaHora | date: 'dd/MM/yyyy HH:mm:ss' }}</td>
                 <td><strong>{{ op.usuario || 'Anónimo' }}</strong></td>

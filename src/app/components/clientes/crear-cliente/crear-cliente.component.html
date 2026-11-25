@@ -1,0 +1,203 @@
+<div class="crear-cliente-page">
+  <div class="breadcrumb-bar">
+    <a routerLink="/clientes" class="back-link">← Volver a Clientes</a>
+    <span>· Registro administrativo de cliente</span>
+  </div>
+
+  <header class="form-header">
+    <h1>Crear nuevo usuario</h1>
+    <p>Registra un nuevo cliente vinculado directamente a tu tienda con sus condiciones crediticias</p>
+  </header>
+
+  <form class="form-card" (ngSubmit)="registrarCliente()">
+    @if (errorMensaje) {
+      <div class="alert-error">{{ errorMensaje }}</div>
+    }
+
+   
+    <h2 class="section-title">1. Datos del cliente y tienda asignada</h2>
+    <div class="grid-2">
+      <div class="field-group">
+        <label for="tiendaFija">Tienda vinculada (no editable)</label>
+        <input
+          id="tiendaFija"
+          type="text"
+          [value]="nombreTienda ? (nombreTienda + ' (ID: ' + idTienda + ')') : ('Tienda #' + idTienda)"
+          disabled
+          class="form-control locked"
+        />
+      </div>
+
+      <div class="field-group">
+        <label for="nombreCli">Nombre completo del cliente *</label>
+        <input
+          id="nombreCli"
+          name="nombreCliente"
+          type="text"
+          [(ngModel)]="nombreCliente"
+          placeholder="Ej. María Fernanda López"
+          required
+          class="form-control"
+        />
+      </div>
+
+      <div class="field-group">
+        <label for="correoCli">Correo electrónico (máx. 30 caracteres) *</label>
+        <input
+          id="correoCli"
+          name="usuarioCliente"
+          type="email"
+          maxlength="30"
+          [(ngModel)]="usuarioCliente"
+          placeholder="Ej. maria@gmail.com"
+          required
+          class="form-control"
+        />
+        <small class="char-counter">{{ usuarioCliente.length }} / 30 caracteres</small>
+      </div>
+
+      <div class="field-group">
+        <label for="passCli">Contraseña del cliente *</label>
+        <input
+          id="passCli"
+          name="passwordCliente"
+          type="password"
+          [(ngModel)]="passwordCliente"
+          placeholder="Ingresa una contraseña segura"
+          required
+          class="form-control"
+        />
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+  
+    <h2 class="section-title">2. Parámetros de tasa y línea de crédito</h2>
+    <div class="grid-3">
+      <div class="field-group">
+        <label for="tipoTasaSel">Tipo de tasa *</label>
+        <select
+          id="tipoTasaSel"
+          name="tipoTasa"
+          [(ngModel)]="tipoTasa"
+          (change)="onCambioTipoTasa()"
+          class="form-control"
+        >
+          <option value="Efectiva">Efectiva (TEA)</option>
+          <option value="Nominal">Nominal</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label for="tasaIntInp">Tasa de interés (%) *</label>
+        <input
+          id="tasaIntInp"
+          name="tasaInteres"
+          type="number"
+          min="0.01"
+          step="0.01"
+          [(ngModel)]="tasaInteres"
+          required
+          class="form-control"
+        />
+      </div>
+
+      <div class="field-group">
+        <label for="capSel">Capitalización (solo Nominal)</label>
+        <select
+          id="capSel"
+          name="capitalizacion"
+          [(ngModel)]="capitalizacion"
+          [disabled]="tipoTasa !== 'Nominal'"
+          class="form-control"
+          [class.locked]="tipoTasa !== 'Nominal'"
+        >
+          <option value="Mensual">Mensual</option>
+          <option value="Diaria">Diaria</option>
+          <option value="Bimestral">Bimestral</option>
+          <option value="Trimestral">Trimestral</option>
+          <option value="Cuatrimestral">Cuatrimestral</option>
+          <option value="Semestral">Semestral</option>
+          <option value="Anual">Anual</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label for="monedaInp">Moneda</label>
+        <input
+          id="monedaInp"
+          type="text"
+          value="Soles (Soles peruanos)"
+          disabled
+          class="form-control locked"
+        />
+      </div>
+
+      <div class="field-group">
+        <label for="limiteInp">Línea máxima de crédito (S/) *</label>
+        <input
+          id="limiteInp"
+          name="limiteMaxCredito"
+          type="number"
+          min="1"
+          step="50"
+          [(ngModel)]="limiteMaxCredito"
+          required
+          class="form-control"
+        />
+      </div>
+
+      <div class="field-group">
+        <label for="mesesInp">Máximo meses de crédito *</label>
+        <input
+          id="mesesInp"
+          name="maxMesesCredito"
+          type="number"
+          min="1"
+          max="60"
+          [(ngModel)]="maxMesesCredito"
+          required
+          class="form-control"
+        />
+      </div>
+
+      <div class="field-group">
+        <label for="corteInp">Día de corte (1 - 31) *</label>
+        <input
+          id="corteInp"
+          name="fechaCorte"
+          type="number"
+          min="1"
+          max="31"
+          [(ngModel)]="fechaCorte"
+          required
+          class="form-control"
+        />
+      </div>
+
+      <div class="field-group">
+        <label for="pagoInp">Día de pago (1 - 31) *</label>
+        <input
+          id="pagoInp"
+          name="fechaPago"
+          type="number"
+          min="1"
+          max="31"
+          [(ngModel)]="fechaPago"
+          required
+          class="form-control"
+        />
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secundario" (click)="cancelar()" [disabled]="guardando">
+        Cancelar
+      </button>
+      <button type="submit" class="btn-primario" [disabled]="guardando">
+        {{ guardando ? 'Creando usuario...' : 'Crear cliente' }}
+      </button>
+    </div>
+  </form>
+</div>

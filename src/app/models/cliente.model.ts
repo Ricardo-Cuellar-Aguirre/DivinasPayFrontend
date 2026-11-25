@@ -14,11 +14,11 @@ export interface Cliente {
   tipoTasa: TipoTasa;
   tasaInteres: number;
   capitalizacion?: TipoCapitalizacion | null;
-  moneda: string; // 'Soles'
+  moneda: string; 
   limiteMaxCredito: number;
   maxMesesCredito: number;
-  fechaCorte: number; // 1 a 31
-  fechaPago: number;  // 1 a 31
+  fechaCorte: number; 
+  fechaPago: number;  
   usuarioCliente: string;
   passwordCliente?: string;
   estado: boolean;
@@ -29,7 +29,7 @@ export interface ClienteRequestDTO {
   tipoTasa: TipoTasa;
   tasaInteres: number;
   capitalizacion?: TipoCapitalizacion | null;
-  moneda?: string; // Por defecto 'Soles'
+  moneda?: string; 
   limiteMaxCredito: number;
   maxMesesCredito: number;
   fechaCorte: number;

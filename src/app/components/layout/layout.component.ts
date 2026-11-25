@@ -53,7 +53,7 @@ export class LayoutComponent implements OnInit {
       this.menuItems = [
         { label: 'Lo nuevo', route: '/novedades', icon: 'assets/icons/menu-novedades.png' },
         { label: 'Productos y Servicios', route: '/productos', icon: 'assets/icons/menu-productos.png' },
-        { label: 'Ubicar tiendas', route: '/ubicar-tiendas', icon: 'assets/icons/menu-tiendas.png' },
+        { label: 'Mi Tienda', route: '/ubicar-tiendas', icon: 'assets/icons/menu-tiendas.png' },
         { label: 'Mis Compras', route: '/creditos', icon: 'assets/icons/menu-compras.png' },
         { label: 'Mi perfil', route: '/configuracion', icon: 'assets/icons/menu-perfil.png' }
       ];
@@ -62,14 +62,13 @@ export class LayoutComponent implements OnInit {
         { label: 'Dashboard', route: '/dashboard', icon: 'assets/icons/menu-novedades.png' },
         { label: 'Clientes', route: '/clientes', icon: 'assets/icons/menu-perfil.png' },
         { label: 'Productos y Servicios', route: '/productos', icon: 'assets/icons/menu-productos.png' },
-        { label: 'Créditos / Compras', route: '/creditos', icon: 'assets/icons/menu-compras.png' },
         { label: 'Configuración', route: '/configuracion', icon: 'assets/icons/menu-tiendas.png' }
       ];
     } else {
+      
       this.menuItems = [
         { label: 'Tiendas', route: '/tiendas', icon: 'assets/icons/menu-tiendas.png' },
-        { label: 'Auditoría', route: '/auditoria', icon: 'assets/icons/menu-novedades.png' },
-        { label: 'Configuración', route: '/configuracion', icon: 'assets/icons/menu-perfil.png' }
+        { label: 'Auditoría', route: '/auditoria', icon: 'assets/icons/menu-novedades.png' }
       ];
     }
   }

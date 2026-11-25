@@ -1,132 +1,115 @@
-<div class="detalle-credito-page">
-  @if (mensajeExito) {
-    <div class="alert-success">{{ mensajeExito }}</div>
-  }
-  @if (mensajeError) {
-    <div class="alert-error">{{ mensajeError }}</div>
-  }
+<div class="detalle-page">
+  <div class="breadcrumb-top">
+    <button type="button" class="link-volver" (click)="volverAlPerfil()">
+      ← Volver al perfil
+    </button>
+    <span>· Créditos &gt; Detalle de Crédito </span>
+  </div>
 
   @if (cargando) {
-    <div class="dp-card empty-state">Cargando cronograma de amortización...</div>
-  } @else if (compra && cliente) {
-    <div class="page-header">
-      <div>
-        <div class="breadcrumb">
-          <a [routerLink]="['/clientes', idCliente]" class="back-link">← Volver al perfil</a>
-          · Créditos &gt; Detalle de Crédito #CR-{{ compra.idCompra | number: '4.0-0' }}
-        </div>
-        <h1 class="page-title">Gestión de Crédito — {{ compra.descripcionProducto }}</h1>
-      </div>
-
-      <span class="badge" [class.badge-success]="creditoLiquidado" [class.badge-warning]="!creditoLiquidado">
-        ● {{ creditoLiquidado ? 'Liquidado' : 'En Curso / Método Francés' }}
+    <div class="panel-card loading-box">Cargando detalle del crédito...</div>
+  } @else if (!compra) {
+    <div class="panel-card loading-box">No se encontró la información de este crédito.</div>
+  } @else {
+    <div class="titulo-row">
+      <h1>Gestión de Crédito — {{ compra.descripcionProducto }}</h1>
+      <span class="estado-curso-pill" [class.finalizado]="creditoFinalizado">
+        {{ creditoFinalizado ? 'Cancelado / Pagado' : 'Pendiente' }}
       </span>
     </div>
 
-    <!-- Fila 1: 4 Tarjetas Resumen -->
-    <div class="summary-grid">
-      <div class="dp-card sum-card">
-        <span class="sum-label">👤 Cliente</span>
-        <strong class="sum-val">{{ cliente.nombreCliente }}</strong>
-        <span class="field-hint">
-          {{ cliente.tipoTasa }}: {{ cliente.tasaInteres | number: '1.2-2' }}%
-        </span>
+    @if (mensajeExito) {
+      <div class="alert-exito">
+        <span>✓ {{ mensajeExito }}</span>
+        <button type="button" (click)="mensajeExito = null">✕</button>
+      </div>
+    }
+
+    <div class="kpis-4-grid">
+      <div class="kpi-box">
+        <span class="kpi-lbl">Cliente</span>
+        <strong>{{ cliente?.nombreCliente || 'Cliente' }}</strong>
+        <small>{{ etiquetaTasaCliente }}</small>
       </div>
 
-      <div class="dp-card sum-card">
-        <span class="sum-label">🏷 Precio Lista (Capital)</span>
-        <strong class="sum-val">S/ {{ compra.monto | number: '1.2-2' }}</strong>
-        <span class="field-hint">Compra realizada el {{ compra.fechaCompra }}</span>
+      <div class="kpi-box">
+        <span class="kpi-lbl">Precio Lista (Capital)</span>
+        <strong>S/ {{ compra.monto | number:'1.2-2' }}</strong>
+        <small>Compra realizada el {{ compra.fechaCompra }}</small>
       </div>
 
-      <div class="dp-card sum-card sum-card-green">
-        <span class="sum-label">
-          💰 Total Financiado ({{ compra.numMeses }} {{ compra.numMeses === 1 ? 'Cuota' : 'Cuotas' }})
-        </span>
-        <strong class="sum-val">S/ {{ compra.totalCuotas | number: '1.2-2' }}</strong>
-        <span class="field-hint">
-          Intereses totales: S/ {{ compra.totalIntereses | number: '1.2-2' }}
-        </span>
+      <div class="kpi-box highlight-green">
+        <span class="kpi-lbl">Total Financiado ({{ compra.numMeses }} Cuotas)</span>
+        <strong>S/ {{ compra.totalCuotas | number:'1.2-2' }}</strong>
+        <small>Intereses totales: S/ {{ compra.totalIntereses | number:'1.2-2' }}</small>
       </div>
 
-      <div class="dp-card sum-card">
-        <span class="sum-label">% TCEA calculada</span>
-        <strong class="sum-val">{{ (compra.tcea * 100) | number: '1.2-2' }}%</strong>
-        <span class="field-hint">Tasa de costo efectivo anual</span>
+      <div class="kpi-box">
+        <span class="kpi-lbl">% TCEA calculada</span>
+        <strong>{{ (compra.tcea * 100) | number:'1.2-2' }}%</strong>
+        <small>Tasa de costo efectivo anual</small>
       </div>
     </div>
 
-    <!-- Barra Modalidad + Descargar Cronograma -->
-    <div class="dp-card modality-bar">
-      <div class="modality-info">
-        <span class="badge badge-warning">📅 Modalidad</span>
-        <strong>
-          {{ compra.formaPago }} ({{ compra.numMeses }} {{ compra.numMeses === 1 ? 'mes' : 'meses' }}) —
-          Cuota Fija: S/ {{ compra.cuotaFija | number: '1.2-2' }}
-        </strong>
-        <span class="field-hint">
-          · Capital capitalizado: S/ {{ compra.capitalCapitalizado | number: '1.2-2' }}
-          (Int. gracia: S/ {{ compra.interesGracia | number: '1.2-2' }})
-        </span>
+
+    <div class="modalidad-banner">
+      <div class="mod-banner-left">
+        
+        <strong>{{ compra.formaPago }} ({{ compra.numMeses }} meses) — Cuota Fija: S/ {{ compra.cuotaFija | number:'1.2-2' }}</strong>
+        
       </div>
 
-      <button type="button" class="btn-secondary" (click)="descargarCronogramaCsv()">
-        ⬇ Descargar cronograma
+      <button type="button" class="btn-descargar" (click)="descargarCronograma()">
+        ↓ Descargar cronograma
       </button>
     </div>
 
-    <!-- Fila Principal: Tabla Cronograma (Izquierda) + Indicadores Financieros (Derecha) -->
-    <div class="schedule-layout">
-      <div class="dp-card">
-        <div class="card-top">
+ 
+    <div class="main-split-grid">
+      <section class="panel-card">
+        <div class="cronograma-head">
           <div>
-            <h3>Cronograma de amortización francesa</h3>
-            <p class="field-hint">
-              Cuotas mensuales iguales — Interés decreciente y amortización creciente
-            </p>
+            <h2>Cronograma de amortización francesa</h2>
+            <p>Cuotas mensuales iguales — Interés decreciente y amortización creciente</p>
           </div>
-          <span class="badge badge-neutral">{{ compra.cuotas.length }} cuotas</span>
+          <span class="badge-cuotas">{{ compra.numMeses }} cuotas</span>
         </div>
 
-        <div class="table-responsive">
-          <table class="dp-table">
+        <div class="table-wrap">
+          <table class="cronograma-table">
             <thead>
               <tr>
-                <th>N° Cuota</th>
-                <th>Fecha de Pago</th>
-                <th>Saldo Inicial</th>
-                <th>Cuota Fija</th>
-                <th>Interés (Degresivo)</th>
-                <th>Amortización (Creciente)</th>
-                <th>Saldo Pendiente</th>
-                <th>Acciones</th>
+                <th>N° CUOTA</th>
+                <th>FECHA DE PAGO</th>
+                <th>SALDO INICIAL</th>
+                <th>CUOTA FIJA</th>
+                <th>INTERÉS (DEGRESIVO)</th>
+                <th>AMORTIZACIÓN (CRECIENTE)</th>
+                <th>SALDO PENDIENTE</th>
+                <th>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
-              @for (c of compra.cuotas; track c.idCuota) {
-                <tr [class.row-next]="c.numero === siguienteNumeroCuotaPendiente">
-                  <td><strong>{{ c.numero }}</strong></td>
-                  <td>{{ c.fechaVencimiento }}</td>
-                  <td>S/ {{ c.saldoInicial | number: '1.2-2' }}</td>
-                  <td><strong>S/ {{ c.cuota | number: '1.2-2' }}</strong></td>
-                  <td class="text-interest">S/ {{ c.interes | number: '1.2-2' }}</td>
-                  <td class="text-amort">S/ {{ c.amortizacion | number: '1.2-2' }}</td>
-                  <td><strong>S/ {{ c.saldoFinal | number: '1.2-2' }}</strong></td>
+              @for (q of compra.cuotas; track q.numero) {
+                <tr [class.fila-pagada]="q.estado === 'Pagado'">
+                  <td><strong>{{ q.numero }}</strong></td>
+                  <td>{{ q.fechaVencimiento }}</td>
+                  <td>S/ {{ q.saldoInicial | number:'1.2-2' }}</td>
+                  <td><strong>S/ {{ q.cuota | number:'1.2-2' }}</strong></td>
+                  <td class="txt-interes">S/ {{ q.interes | number:'1.2-2' }}</td>
+                  <td class="txt-amort">S/ {{ q.amortizacion | number:'1.2-2' }}</td>
+                  <td>S/ {{ q.saldoFinal | number:'1.2-2' }}</td>
                   <td>
-                    @if (c.estado === 'Pagado') {
-                      <span class="badge badge-success" [title]="'Pagado el ' + c.fechaPagoReal">
-                        ✓ Pagado ({{ c.fechaPagoReal }})
-                      </span>
-                    } @else if (esAdminTienda && c.numero === siguienteNumeroCuotaPendiente) {
+                    @if (q.estado === 'Pendiente') {
                       <button
                         type="button"
-                        class="btn-primary btn-xs"
-                        (click)="abrirModalPago(c)"
+                        class="btn-pagar-cuota-fila"
+                        (click)="abrirModalPago(q)"
                       >
-                        Registrar Pago
+                        Pagar
                       </button>
                     } @else {
-                      <span class="badge badge-neutral">Próxima cuota</span>
+                      <span class="badge-pagado">✓ Pagado</span>
                     }
                   </td>
                 </tr>
@@ -134,82 +117,90 @@
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
-      <!-- Panel Derecho: Indicadores Financieros -->
-      <div class="indicators-col">
-        <div class="dp-card">
-          <h3 class="ind-title">Indicadores financieros</h3>
+      <aside class="panel-card indicadores-aside">
+        <h3>Indicadores de Tasa de Interés</h3>
 
-          <div class="ind-box">
-            <span class="ind-label">TEA — Tasa Efectiva Anual</span>
-            <strong class="ind-big">{{ (compra.tasaEfectivaAnual * 100) | number: '1.4-4' }}%</strong>
-          </div>
-
-          <div class="ind-box">
-            <span class="ind-label">TEM — Tasa Efectiva Mensual</span>
-            <strong class="ind-big">{{ (compra.tasaEfectivaMensual * 100) | number: '1.4-4' }}%</strong>
-          </div>
-
-          @if (compra.tir !== null) {
-            <div class="ind-box">
-              <span class="ind-label">TIR — Tasa Interna de Retorno</span>
-              <strong class="ind-big">
-                {{ (compra.tir * 100) | number: '1.2-4' }}% <small>mensual</small>
-              </strong>
-            </div>
-          }
-
-          <div class="ind-box ind-box-warm">
-            <span class="ind-label">⏳ Período de gracia inicial</span>
-            <strong class="ind-big">{{ compra.diasGracia }} <small>días</small></strong>
-            <span class="field-hint">
-              Fin de gracia: <strong>{{ compra.fechaFinGracia }}</strong>.
-              Interés capitalizado: S/ {{ compra.interesGracia | number: '1.2-2' }}.
-            </span>
-          </div>
+        <div class="ind-card">
+          <span>TEA — Tasa Efectiva Anual</span>
+          <strong>{{ (compra.tasaEfectivaAnual * 100) | number:'1.4-4' }}%</strong>
         </div>
-      </div>
+
+        <div class="ind-card">
+          <span>TEM — Tasa Efectiva Mensual</span>
+          <strong>{{ (compra.tasaEfectivaMensual * 100) | number:'1.4-4' }}%</strong>
+        </div>
+
+        <div class="ind-card">
+          <span>TIR — Tasa Interna de Retorno</span>
+          <strong>{{ ((compra.tir ?? compra.tasaEfectivaMensual) * 100) | number:'1.4-4' }}% <small>mensual</small></strong>
+        </div>
+
+        <div class="ind-card gracia-card">
+          <span> Período de gracia inicial</span>
+          <strong>{{ compra.diasGracia }} <small>días</small></strong>
+          <p>
+            Fin de gracia: {{ compra.fechaFinGracia }}. Interés capitalizado: S/ {{ compra.interesGracia | number:'1.2-2' }}.
+          </p>
+        </div>
+      </aside>
     </div>
   }
 </div>
 
-<!-- Modal Confirmar Pago de Cuota -->
-@if (cuotaAPagarModal) {
-  <div class="modal-backdrop" (click)="cerrarModalPago()">
-    <div class="dp-card modal-pay" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Registrar Pago — Cuota #{{ cuotaAPagarModal.numero }}</h3>
-        <button type="button" class="btn-secondary" (click)="cerrarModalPago()">✕</button>
-      </div>
 
-      <p class="field-hint" style="margin-bottom: 1rem;">
-        Monto a cancelar: <strong>S/ {{ cuotaAPagarModal.cuota | number: '1.2-2' }}</strong>
-        (Vencimiento programado: {{ cuotaAPagarModal.fechaVencimiento }}).
+@if (modalPagoAbierto && compra && cuotaAPagar) {
+  <div class="modal-backdrop" (click)="cerrarModalPago()">
+    <div class="pago-modal-card" (click)="$event.stopPropagation()">
+      <span class="kicker-modal">Pago de cuota</span>
+      <h2>{{ compra.descripcionProducto }}</h2>
+      <p class="pago-sub">
+        Cuota #{{ cuotaAPagar.numero }} de {{ compra.numMeses }} · Vencimiento {{ cuotaAPagar.fechaVencimiento }}
       </p>
 
-      <div class="form-group">
-        <label for="fechaPagoReal">Fecha real de pago *</label>
-        <input
-          id="fechaPagoReal"
-          type="date"
-          [(ngModel)]="fechaPagoReal"
-          class="form-control"
-        />
-        <span class="field-hint">
-          No puede ser anterior a la fecha de compra ({{ compra?.fechaCompra }}).
-        </span>
+      <div class="pago-monto-box">
+        <span>Total a pagar hoy</span>
+        <strong>S/ {{ cuotaAPagar.cuota | number:'1.2-2' }}</strong>
       </div>
 
-      <div class="modal-footer">
-        <button type="button" class="btn-secondary" (click)="cerrarModalPago()">Cancelar</button>
+      @if (errorPago) {
+        <div class="modal-alert-error">{{ errorPago }}</div>
+      }
+
+      <div class="metodos-grid">
         <button
           type="button"
-          class="btn-primary"
-          (click)="confirmarPagoCuota()"
-          [disabled]="pagando || !fechaPagoReal"
+          [class.selected]="metodoPago === 'TARJETA'"
+          (click)="metodoPago = 'TARJETA'"
         >
-          {{ pagando ? 'Procesando pago...' : '✓ Confirmar Pago' }}
+          Tarjeta Débito / Crédito
+        </button>
+        <button
+          type="button"
+          [class.selected]="metodoPago === 'YAPE_PLIN'"
+          (click)="metodoPago = 'YAPE_PLIN'"
+        >
+          Yape / Plin
+        </button>
+        <button
+          type="button"
+          [class.selected]="metodoPago === 'PAGO_EFECTIVO'"
+          (click)="metodoPago = 'PAGO_EFECTIVO'"
+        >
+          PagoEfectivo
+        </button>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secundario" (click)="cerrarModalPago()">Cancelar</button>
+        <button
+          type="button"
+          class="btn-primario"
+          [disabled]="procesandoPago"
+          (click)="confirmarPagoCuota()"
+        >
+          {{ procesandoPago ? 'Procesando...' : 'Confirmar pago' }}
         </button>
       </div>
     </div>

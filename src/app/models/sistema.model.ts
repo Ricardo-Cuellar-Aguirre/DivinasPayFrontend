@@ -16,7 +16,7 @@ export interface ResumenTiendaDTO {
 
 export interface OperacionResponseDTO {
   idOperacion: number;
-  fechaHora: string; // Formato ISO LocalDateTime
+  fechaHora: string; 
   usuario: string;
   rol: string;
   idTienda: number | null;

@@ -165,7 +165,7 @@ export class CompraService {
             return { idTienda: Number(idTienda), idCliente: Number(idCliente) };
           }
         } catch {
-          // Ignorar
+          
         }
       }
     }

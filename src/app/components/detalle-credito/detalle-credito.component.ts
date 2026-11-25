@@ -1,172 +1,222 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { ClienteResponseDTO } from '../../models/cliente.model';
-import { CompraResponseDTO, CuotaDetalleDTO } from '../../models/compra.model';
-import { ErrorResponse } from '../../models/sistema.model';
-import { AuthService } from '../../services/auth.service';
-import { ClienteService } from '../../services/cliente.service';
-import { CompraService } from '../../services/compra.service';
+import { finalize, timeout } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import {
+  CompraBackendDTO,
+  CompraService,
+  CuotaBackendDTO
+} from '../../services/compra.service';
 
 @Component({
   selector: 'app-detalle-credito',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './detalle-credito.component.html',
   styleUrl: './detalle-credito.component.css'
 })
 export class DetalleCreditoComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly authService = inject(AuthService);
-  private readonly clienteService = inject(ClienteService);
+  private readonly http = inject(HttpClient);
   private readonly compraService = inject(CompraService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  idTienda!: number;
-  idCliente!: number;
-  idCompra!: number;
-  esAdminTienda = false;
-
-  cliente: ClienteResponseDTO | null = null;
-  compra: CompraResponseDTO | null = null;
-
+  idCliente = 0;
+  idCompra = 0;
+  compra: CompraBackendDTO | null = null;
+  cliente: any = null;
   cargando = true;
-  pagando = false;
-  mensajeExito: string | null = null;
-  mensajeError: string | null = null;
 
-  // Modal de confirmación de pago
-  cuotaAPagarModal: CuotaDetalleDTO | null = null;
-  fechaPagoReal = new Date().toISOString().split('T')[0];
+
+  modalPagoAbierto = false;
+  cuotaAPagar: CuotaBackendDTO | null = null;
+  metodoPago: 'TARJETA' | 'YAPE_PLIN' | 'PAGO_EFECTIVO' = 'YAPE_PLIN';
+  procesandoPago = false;
+  errorPago: string | null = null;
+  mensajeExito: string | null = null;
 
   ngOnInit(): void {
-    const sesion = this.authService.sesionActual;
-    if (!sesion?.idTienda) {
-      this.router.navigate(['/login']);
-      return;
-    }
-
-    this.idTienda = sesion.idTienda;
-    this.esAdminTienda = sesion.rol === 'ADMIN_TIENDA';
-    this.idCliente = Number(this.route.snapshot.paramMap.get('idCliente'));
-    this.idCompra = Number(this.route.snapshot.paramMap.get('idCompra'));
-
-    if (!this.idCliente || !this.idCompra) {
-      this.router.navigate(['/creditos']);
-      return;
-    }
-
-    this.cargarDetalle();
-  }
-
-  cargarDetalle(): void {
-    this.cargando = true;
-    this.mensajeError = null;
-
-    forkJoin({
-      cliente: this.clienteService.obtener(this.idTienda, this.idCliente),
-      compra: this.compraService.obtener(this.idTienda, this.idCliente, this.idCompra)
-    }).subscribe({
-      next: ({ cliente, compra }) => {
-        this.cliente = cliente;
-        this.compra = compra;
-        this.cargando = false;
-      },
-      error: (err: HttpErrorResponse) => {
-        this.cargando = false;
-        const body = err.error as ErrorResponse | undefined;
-        this.mensajeError = body?.mensaje || 'No se pudo obtener el detalle del crédito.';
+    this.route.paramMap.subscribe((params) => {
+      this.idCliente = Number(params.get('idCliente') || 0);
+      this.idCompra = Number(params.get('idCompra') || 0);
+      if (this.idCliente && this.idCompra) {
+        this.cargarDetalle();
       }
     });
   }
 
-  get siguienteNumeroCuotaPendiente(): number | null {
-    if (!this.compra) return null;
-    const pendiente = this.compra.cuotas.find((c) => c.estado === 'Pendiente');
-    return pendiente ? pendiente.numero : null;
+  private hoyLocalIso(): string {
+    const hoy = new Date();
+    const anio = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
   }
 
-  get creditoLiquidado(): boolean {
-    if (!this.compra) return false;
-    return this.compra.cuotas.every((c) => c.estado === 'Pagado');
+  private obtenerIdTiendaSesion(): number {
+    for (const storage of [sessionStorage, localStorage]) {
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (!key) continue;
+        const raw = storage.getItem(key);
+        if (!raw || !raw.trim().startsWith('{')) continue;
+        try {
+          const obj = JSON.parse(raw);
+          const idTienda = obj?.idTienda ?? obj?.tienda?.idTienda ?? obj?.sesion?.idTienda;
+          if (idTienda != null) return Number(idTienda);
+        } catch {
+          
+        }
+      }
+    }
+    return 1;
   }
 
-  abrirModalPago(cuota: CuotaDetalleDTO): void {
-    this.cuotaAPagarModal = cuota;
-    this.fechaPagoReal = new Date().toISOString().split('T')[0];
-  }
+  cargarDetalle(): void {
+    this.cargando = true;
+    const idTienda = this.obtenerIdTiendaSesion();
 
-  cerrarModalPago(): void {
-    this.cuotaAPagarModal = null;
-  }
-
-  confirmarPagoCuota(): void {
-    if (!this.cuotaAPagarModal || !this.esAdminTienda) return;
-
-    this.pagando = true;
-    this.mensajeError = null;
-    this.mensajeExito = null;
-
-    const numeroCuota = this.cuotaAPagarModal.numero;
+    this.http
+      .get(`${environment.apiUrl}/tiendas/${idTienda}/clientes/${this.idCliente}`)
+      .subscribe({
+        next: (cli) => {
+          this.cliente = cli;
+          this.cdr.detectChanges();
+        }
+      });
 
     this.compraService
-      .pagarCuota(this.idTienda, this.idCliente, this.idCompra, numeroCuota, {
-        fechaPago: this.fechaPagoReal
-      })
+      .obtener(idTienda, this.idCliente, this.idCompra)
+      .pipe(
+        timeout(8000),
+        finalize(() => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+        })
+      )
       .subscribe({
-        next: (compraActualizada) => {
-          this.compra = compraActualizada;
-          this.pagando = false;
-          this.cuotaAPagarModal = null;
-          this.mensajeExito = `La cuota #${numeroCuota} fue marcada como pagada el ${this.fechaPagoReal}.`;
+        next: (data) => {
+          this.compra = data;
+          this.cdr.detectChanges();
         },
-        error: (err: HttpErrorResponse) => {
-          this.pagando = false;
-          this.cuotaAPagarModal = null;
-          const body = err.error as ErrorResponse | undefined;
-          this.mensajeError = body?.mensaje || 'No se pudo registrar el pago de la cuota.';
+        error: () => {
+          this.compra = null;
+          this.cdr.detectChanges();
         }
       });
   }
 
-  descargarCronogramaCsv(): void {
-    if (!this.compra || !this.cliente) return;
+  get creditoFinalizado(): boolean {
+    if (!this.compra?.cuotas?.length) return false;
+    return this.compra.cuotas.every((q) => q.estado?.trim().toLowerCase() === 'pagado');
+  }
 
-    const cabeceras = [
-      'Nro Cuota',
-      'Fecha Vencimiento',
-      'Saldo Inicial (S/)',
-      'Cuota Fija (S/)',
-      'Interes (S/)',
-      'Amortizacion (S/)',
-      'Saldo Final (S/)',
-      'Estado',
-      'Fecha Pago Real'
+  get etiquetaTasaCliente(): string {
+    const tipo = (this.cliente?.tipoTasa || '').trim().toLowerCase();
+    const tasa = Number(this.cliente?.tasaInteres ?? 24).toFixed(2);
+    if (tipo === 'nominal') {
+      const cap = (this.cliente?.capitalizacion || '').trim().toLowerCase();
+      const mapa: Record<string, string> = {
+        diaria: 'TND',
+        mensual: 'TNM',
+        bimestral: 'TNB',
+        trimestral: 'TNT',
+        cuatrimestral: 'TNC',
+        semestral: 'TNS',
+        anual: 'TNA'
+      };
+      const sigla = mapa[cap] || 'TNM';
+      return `${sigla}: ${tasa}%`;
+    }
+    return `TEA: ${tasa}%`;
+  }
+
+  volverAlPerfil(): void {
+    this.router.navigate(['/creditos']);
+  }
+
+  abrirModalPago(cuota: CuotaBackendDTO): void {
+    if (cuota.estado?.trim().toLowerCase() === 'pagado') return;
+    this.cuotaAPagar = cuota;
+    this.errorPago = null;
+    this.modalPagoAbierto = true;
+    this.cdr.detectChanges();
+  }
+
+  cerrarModalPago(): void {
+    if (this.procesandoPago) return;
+    this.modalPagoAbierto = false;
+    this.cuotaAPagar = null;
+    this.cdr.detectChanges();
+  }
+
+  confirmarPagoCuota(): void {
+    if (!this.compra || !this.cuotaAPagar || this.procesandoPago) return;
+    this.procesandoPago = true;
+    this.errorPago = null;
+    this.cdr.detectChanges();
+
+    const idTienda = this.obtenerIdTiendaSesion();
+    const fechaHoy = this.hoyLocalIso();
+
+    this.compraService
+      .pagarCuota(idTienda, this.idCliente, this.compra.idCompra, this.cuotaAPagar.numero, fechaHoy)
+      .pipe(
+        timeout(8000),
+        finalize(() => {
+          this.procesandoPago = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (compraActualizada) => {
+          const num = this.cuotaAPagar?.numero;
+          this.compra = compraActualizada;
+          this.modalPagoAbierto = false;
+          this.cuotaAPagar = null;
+          this.mensajeExito = `Cuota #${num} pagada correctamente.`;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.errorPago = err?.error?.mensaje || 'No se pudo procesar el pago de la cuota.';
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  descargarCronograma(): void {
+    if (!this.compra) return;
+    const encabezados = [
+      'N° Cuota',
+      'Fecha de Pago',
+      'Saldo Inicial',
+      'Cuota Fija',
+      'Interés',
+      'Amortización',
+      'Saldo Pendiente',
+      'Estado'
     ];
-
-    const filas = this.compra.cuotas.map((c) => [
-      c.numero,
-      c.fechaVencimiento,
-      c.saldoInicial.toFixed(2),
-      c.cuota.toFixed(2),
-      c.interes.toFixed(2),
-      c.amortizacion.toFixed(2),
-      c.saldoFinal.toFixed(2),
-      c.estado,
-      c.fechaPagoReal ?? '-'
+    const filas = (this.compra.cuotas || []).map((q) => [
+      q.numero,
+      q.fechaVencimiento,
+      q.saldoInicial.toFixed(2),
+      q.cuota.toFixed(2),
+      q.interes.toFixed(2),
+      q.amortizacion.toFixed(2),
+      q.saldoFinal.toFixed(2),
+      q.estado
     ]);
 
-    const contenidoCsv = [cabeceras.join(','), ...filas.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([contenidoCsv], { type: 'text/csv;charset=utf-8;' });
+    const csv = [encabezados.join(','), ...filas.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-
-    const enlace = document.createElement('a');
-    enlace.href = url;
-    enlace.download = `cronograma_credito_${this.compra.idCompra}.csv`;
-    enlace.click();
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cronograma-credito-${this.compra.idCompra}.csv`;
+    link.click();
     URL.revokeObjectURL(url);
   }
 }

@@ -1,5 +1,5 @@
 <div class="app-shell">
-  <!-- Menú Lateral Izquierdo -->
+ 
   <aside class="sidebar">
     <div class="sidebar-brand">
       <img
@@ -29,9 +29,9 @@
     </nav>
   </aside>
 
-  <!-- Columna Derecha: Cabecera Oscura + Contenido + Pie de Página -->
+
   <div class="main-column">
-    <!-- Barra Superior Oscura -->
+    
     <header class="topbar-dark">
       <div class="topbar-left">
         <span class="store-title">{{ nombreTiendaActual }}</span>
@@ -44,10 +44,10 @@
           <span>{{ direccionTiendaActual }}</span>
         </span>
 
-        <span class="panel-tag">PANEL DE PAGOS</span>
+       
       </div>
 
-      <!-- Menú Desplegable del Usuario -->
+     
       <div class="topbar-right">
         <div class="user-menu-wrapper">
           <button
@@ -75,12 +75,14 @@
 
           @if (menuUsuarioAbierto) {
             <div class="user-dropdown-menu" (click)="$event.stopPropagation()">
-              <button type="button" class="dropdown-item" (click)="irAEditarPerfil()">
-                <img src="assets/icons/menu-perfil.png" alt="Editar perfil" class="dropdown-icon" />
-                <span>Editar perfil</span>
-              </button>
+              @if (sesion?.rol !== 'ADMIN_SISTEMA') {
+                <button type="button" class="dropdown-item" (click)="irAEditarPerfil()">
+                  <img src="assets/icons/menu-perfil.png" alt="Editar perfil" class="dropdown-icon" />
+                  <span>Editar perfil</span>
+                </button>
 
-              <div class="dropdown-divider"></div>
+                <div class="dropdown-divider"></div>
+              }
 
               <button type="button" class="dropdown-item danger" (click)="cerrarSesion()">
                 <svg viewBox="0 0 24 24" class="dropdown-svg" fill="none" stroke="currentColor" stroke-width="2">
@@ -96,12 +98,12 @@
       </div>
     </header>
 
-    <!-- Área Central de Vistas -->
+    
     <main class="content-area">
       <router-outlet></router-outlet>
     </main>
 
-    <!-- Pie de Página -->
+    
     <footer class="dp-footer">
       <div class="footer-left">
         <span class="footer-phone">

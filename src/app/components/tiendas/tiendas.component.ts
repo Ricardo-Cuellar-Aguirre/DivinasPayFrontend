@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
+import { finalize, timeout } from 'rxjs';
 import { ErrorResponse } from '../../models/sistema.model';
 import {
   TiendaRequestDTO,
@@ -25,6 +26,7 @@ import { TiendaService } from '../../services/tienda.service';
 export class TiendasComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly tiendaService = inject(TiendaService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   tiendas: TiendaResponseDTO[] = [];
   cargando = true;
@@ -55,22 +57,32 @@ export class TiendasComponent implements OnInit {
 
   cargarTiendas(): void {
     this.cargando = true;
-    this.tiendaService.listar().subscribe({
-      next: (lista) => {
-        this.tiendas = lista;
-        this.cargando = false;
-      },
-      error: (err: HttpErrorResponse) => {
-        this.cargando = false;
-        const body = err.error as ErrorResponse | undefined;
-        this.mensajeError = body?.mensaje || 'No se pudo cargar la lista de tiendas.';
-      }
-    });
+    this.tiendaService
+      .listar()
+      .pipe(
+        timeout(8000),
+        finalize(() => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (lista) => {
+          this.tiendas = (lista || []).sort((a, b) => a.idTienda - b.idTienda);
+          this.cdr.detectChanges();
+        },
+        error: (err: HttpErrorResponse) => {
+          const body = err.error as ErrorResponse | undefined;
+          this.mensajeError = body?.mensaje || 'No se pudo cargar la lista de tiendas.';
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   abrirModalNueva(): void {
     this.tiendaEditando = null;
     this.errorFormulario = null;
+    this.guardando = false;
     this.tiendaForm.reset({
       nombreTienda: '',
       direccion: '',
@@ -88,11 +100,13 @@ export class TiendasComponent implements OnInit {
     passCtrl?.updateValueAndValidity();
 
     this.mostrarModal = true;
+    this.cdr.detectChanges();
   }
 
   abrirModalEditar(tienda: TiendaResponseDTO): void {
     this.tiendaEditando = tienda;
     this.errorFormulario = null;
+    this.guardando = false;
     this.tiendaForm.reset({
       nombreTienda: tienda.nombreTienda,
       direccion: tienda.direccion,
@@ -106,13 +120,18 @@ export class TiendasComponent implements OnInit {
     passCtrl?.updateValueAndValidity();
 
     this.mostrarModal = true;
+    this.cdr.detectChanges();
   }
 
   cerrarModal(): void {
+    if (this.guardando) return;
     this.mostrarModal = false;
+    this.errorFormulario = null;
+    this.cdr.detectChanges();
   }
 
   guardarTienda(): void {
+    if (this.guardando) return;
     if (this.tiendaForm.invalid) {
       this.tiendaForm.markAllAsTouched();
       return;
@@ -120,6 +139,10 @@ export class TiendasComponent implements OnInit {
 
     this.guardando = true;
     this.errorFormulario = null;
+    this.mensajeExito = null;
+    this.mensajeError = null;
+    this.cdr.detectChanges();
+
     const val = this.tiendaForm.value;
 
     if (this.tiendaEditando) {
@@ -130,19 +153,31 @@ export class TiendasComponent implements OnInit {
         usuarioAdmin: val.usuarioAdmin.trim()
       };
 
-      this.tiendaService.actualizar(this.tiendaEditando.idTienda, dtoUpdate).subscribe({
-        next: () => {
-          this.guardando = false;
-          this.mostrarModal = false;
-          this.mensajeExito = 'Datos de la tienda actualizados correctamente.';
-          this.cargarTiendas();
-        },
-        error: (err: HttpErrorResponse) => {
-          this.guardando = false;
-          const body = err.error as ErrorResponse | undefined;
-          this.errorFormulario = body?.mensaje || 'No se pudo actualizar la tienda.';
-        }
-      });
+      this.tiendaService
+        .actualizar(this.tiendaEditando.idTienda, dtoUpdate)
+        .pipe(
+          timeout(10000),
+          finalize(() => {
+            this.guardando = false;
+            this.cdr.detectChanges();
+          })
+        )
+        .subscribe({
+          next: () => {
+            this.guardando = false;
+            this.mostrarModal = false;
+            this.tiendaEditando = null;
+            this.mensajeExito = `Tienda "${dtoUpdate.nombreTienda}" actualizada con éxito.`;
+            this.cargarTiendas();
+            this.cdr.detectChanges();
+          },
+          error: (err: HttpErrorResponse) => {
+            this.guardando = false;
+            const body = err.error as ErrorResponse | undefined;
+            this.errorFormulario = body?.mensaje || 'No se pudo actualizar la tienda.';
+            this.cdr.detectChanges();
+          }
+        });
     } else {
       const dtoCreate: TiendaRequestDTO = {
         nombreTienda: val.nombreTienda.trim(),
@@ -152,19 +187,31 @@ export class TiendasComponent implements OnInit {
         passwordAdmin: val.passwordAdmin
       };
 
-      this.tiendaService.crear(dtoCreate).subscribe({
-        next: () => {
-          this.guardando = false;
-          this.mostrarModal = false;
-          this.mensajeExito = 'Tienda registrada y habilitada en la plataforma.';
-          this.cargarTiendas();
-        },
-        error: (err: HttpErrorResponse) => {
-          this.guardando = false;
-          const body = err.error as ErrorResponse | undefined;
-          this.errorFormulario = body?.mensaje || 'No se pudo registrar la tienda.';
-        }
-      });
+      this.tiendaService
+        .crear(dtoCreate)
+        .pipe(
+          timeout(10000),
+          finalize(() => {
+            this.guardando = false;
+            this.cdr.detectChanges();
+          })
+        )
+        .subscribe({
+          next: () => {
+            this.guardando = false;
+            this.mostrarModal = false;
+            this.tiendaForm.reset();
+            this.mensajeExito = `Tienda "${dtoCreate.nombreTienda}" creada con éxito.`;
+            this.cargarTiendas();
+            this.cdr.detectChanges();
+          },
+          error: (err: HttpErrorResponse) => {
+            this.guardando = false;
+            const body = err.error as ErrorResponse | undefined;
+            this.errorFormulario = body?.mensaje || 'No se pudo registrar la tienda.';
+            this.cdr.detectChanges();
+          }
+        });
     }
   }
 
@@ -174,15 +221,23 @@ export class TiendasComponent implements OnInit {
     );
     if (!ok) return;
 
-    this.tiendaService.darDeBaja(tienda.idTienda).subscribe({
-      next: () => {
-        this.mensajeExito = `La tienda "${tienda.nombreTienda}" fue dada de baja.`;
-        this.cargarTiendas();
-      },
-      error: (err: HttpErrorResponse) => {
-        const body = err.error as ErrorResponse | undefined;
-        this.mensajeError = body?.mensaje || 'No se pudo dar de baja la tienda.';
-      }
-    });
+    this.tiendaService
+      .darDeBaja(tienda.idTienda)
+      .pipe(
+        timeout(8000),
+        finalize(() => this.cdr.detectChanges())
+      )
+      .subscribe({
+        next: () => {
+          this.mensajeExito = `La tienda "${tienda.nombreTienda}" fue dada de baja.`;
+          this.cargarTiendas();
+          this.cdr.detectChanges();
+        },
+        error: (err: HttpErrorResponse) => {
+          const body = err.error as ErrorResponse | undefined;
+          this.mensajeError = body?.mensaje || 'No se pudo dar de baja la tienda.';
+          this.cdr.detectChanges();
+        }
+      });
   }
 }

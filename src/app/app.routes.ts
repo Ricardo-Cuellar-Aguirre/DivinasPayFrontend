@@ -5,6 +5,7 @@ import { LoginComponent } from './components/login/login.component';
 import { LayoutComponent } from './components/layout/layout.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { ClientesComponent } from './components/clientes/clientes.component';
+import { CrearClienteComponent } from './components/clientes/crear-cliente/crear-cliente.component';
 import { PerfilCrediticioComponent } from './components/perfil-crediticio/perfil-crediticio.component';
 import { ProductosComponent } from './components/productos/productos.component';
 import { DetalleCreditoComponent } from './components/detalle-credito/detalle-credito.component';
@@ -45,6 +46,12 @@ export const routes: Routes = [
       {
         path: 'clientes',
         component: ClientesComponent,
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN_TIENDA'] }
+      },
+      {
+        path: 'clientes/nuevo',
+        component: CrearClienteComponent,
         canActivate: [roleGuard],
         data: { roles: ['ADMIN_TIENDA'] }
       },
@@ -93,7 +100,7 @@ export const routes: Routes = [
         path: 'configuracion',
         component: ConfiguracionComponent,
         canActivate: [roleGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_TIENDA', 'CLIENTE'] }
+        data: { roles: ['ADMIN_TIENDA', 'CLIENTE'] }
       },
       {
         path: '',

@@ -29,15 +29,15 @@ export class MisComprasComponent implements OnInit {
 
   tabActiva: 'ACTIVOS' | 'HISTORIAL' = 'HISTORIAL';
 
-  // Filtro 1: Intervalo de fechas
+
   filtroFechaDesde = '';
   filtroFechaHasta = '';
 
-  // Filtro 2: Monto menor o mayor a la cantidad ingresada
+
   filtroMontoCondicion: 'TODOS' | 'MENOR' | 'MAYOR' = 'TODOS';
   filtroMontoCantidad: number | null = null;
 
-  // Modal de pago de cuota
+
   modalPagoAbierto = false;
   compraAPagar: CompraBackendDTO | null = null;
   cuotaAPagar: CuotaBackendDTO | null = null;
@@ -88,14 +88,14 @@ export class MisComprasComponent implements OnInit {
         next: (lista) => {
           const compras = (lista || []).sort((a, b) => b.idCompra - a.idCompra);
 
-          // Créditos activos: compras con al menos 1 cuota en estado 'Pendiente' en la tabla cuota
+         
           this.creditosActivos = compras.filter(
             (c) =>
               Array.isArray(c.cuotas) &&
               c.cuotas.some((q) => q.estado?.trim().toLowerCase() === 'pendiente')
           );
 
-          // Historial de compras: todas las compras cuyas cuotas en la tabla cuota estén en estado 'Pagado'
+          
           this.historialCompras = compras.filter(
             (c) =>
               Array.isArray(c.cuotas) &&
@@ -123,7 +123,7 @@ export class MisComprasComponent implements OnInit {
         return false;
       }
 
-      // Filtro 2: Monto menor o mayor a la cantidad ingresada
+     
       const montoCompra = Number(item.monto ?? 0);
       if (
         this.filtroMontoCondicion !== 'TODOS' &&
