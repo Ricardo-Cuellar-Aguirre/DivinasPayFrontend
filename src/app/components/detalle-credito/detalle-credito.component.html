@@ -100,7 +100,7 @@
                   <td class="txt-amort">S/ {{ q.amortizacion | number:'1.2-2' }}</td>
                   <td>S/ {{ q.saldoFinal | number:'1.2-2' }}</td>
                   <td>
-                    @if (q.estado === 'Pendiente') {
+                    @if (q.estado === 'Pendiente' && esAdminTienda) {
                       <button
                         type="button"
                         class="btn-pagar-cuota-fila"
@@ -108,6 +108,8 @@
                       >
                         Pagar
                       </button>
+                    } @else if (q.estado === 'Pendiente') {
+                      <span class="badge-pendiente-txt">Pendiente</span>
                     } @else {
                       <span class="badge-pagado">✓ Pagado</span>
                     }

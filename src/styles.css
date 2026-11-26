@@ -232,3 +232,12 @@ body {
 .dp-table tr:last-child td {
   border-bottom: none;
 }
+
+
+.field-help {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--text-muted, #7a7a7a);
+}

@@ -19,6 +19,8 @@ export interface ClienteListaDTO {
   fechaCorte: number;
   fechaPago: number;
   usuarioCliente: string;
+  estado: boolean;
+  pendienteAprobacion?: boolean;
 }
 
 @Component({
@@ -52,6 +54,106 @@ export class ClientesComponent implements OnInit {
   modalEliminarAbierto = false;
   clienteAEliminar: ClienteListaDTO | null = null;
   eliminando = false;
+
+  modalAprobarAbierto = false;
+  clienteAprobando: ClienteListaDTO | null = null;
+  aprTipoTasa: 'Efectiva' | 'Nominal' = 'Efectiva';
+  aprTasaInteres = 30;
+  aprCapitalizacion = 'Mensual';
+  aprLimiteMaxCredito = 1000;
+  aprMaxMesesCredito = 6;
+  aprFechaCorte = 20;
+  aprFechaPago = 26;
+  aprobando = false;
+  errorAprobacion: string | null = null;
+
+  get pendientesCount(): number {
+    return this.clientes.filter((c) => c.pendienteAprobacion).length;
+  }
+
+  estadoCliente(cli: ClienteListaDTO): 'PENDIENTE' | 'ACTIVO' | 'BAJA' {
+    if (cli.pendienteAprobacion) return 'PENDIENTE';
+    return cli.estado === false ? 'BAJA' : 'ACTIVO';
+  }
+
+  abrirModalAprobar(cli: ClienteListaDTO): void {
+    this.clienteAprobando = cli;
+    this.errorAprobacion = null;
+    this.modalAprobarAbierto = true;
+    this.cdr.detectChanges();
+  }
+
+  cerrarModalAprobar(): void {
+    if (this.aprobando) return;
+    this.modalAprobarAbierto = false;
+    this.clienteAprobando = null;
+    this.cdr.detectChanges();
+  }
+
+  aprobarCliente(): void {
+    if (!this.clienteAprobando || this.aprobando) return;
+    this.errorAprobacion = null;
+    if (!this.aprTasaInteres || this.aprTasaInteres <= 0 || this.aprTasaInteres > 200) {
+      this.errorAprobacion = 'La tasa de interés debe ser mayor a 0 y como máximo 200%.';
+      return;
+    }
+    if (!this.aprLimiteMaxCredito || this.aprLimiteMaxCredito <= 0) {
+      this.errorAprobacion = 'La línea máxima de crédito debe ser mayor a 0.';
+      return;
+    }
+    if (!this.aprMaxMesesCredito || this.aprMaxMesesCredito < 1) {
+      this.errorAprobacion = 'El máximo de meses debe ser al menos 1.';
+      return;
+    }
+    const diaValido = (d: number) => Number.isInteger(Number(d)) && d >= 1 && d <= 31;
+    if (!diaValido(this.aprFechaCorte) || !diaValido(this.aprFechaPago)) {
+      this.errorAprobacion = 'Los días de corte y de pago deben estar entre 1 y 31.';
+      return;
+    }
+
+    const payload = {
+      tipoTasa: this.aprTipoTasa,
+      tasaInteres: Number(this.aprTasaInteres),
+      capitalizacion: this.aprTipoTasa === 'Nominal' ? this.aprCapitalizacion : null,
+      moneda: 'Soles',
+      limiteMaxCredito: Number(this.aprLimiteMaxCredito),
+      maxMesesCredito: Number(this.aprMaxMesesCredito),
+      fechaCorte: Number(this.aprFechaCorte),
+      fechaPago: Number(this.aprFechaPago)
+    };
+    const nombre = this.clienteAprobando.nombreCliente;
+    this.aprobando = true;
+    this.cdr.detectChanges();
+
+    this.http
+      .put(
+        `${environment.apiUrl}/tiendas/${this.adminIdTienda}/clientes/${this.clienteAprobando.idCliente}/aprobar`,
+        payload
+      )
+      .pipe(
+        timeout(8000),
+        finalize(() => {
+          this.aprobando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.modalAprobarAbierto = false;
+          this.clienteAprobando = null;
+          this.mensajeExito = `"${nombre}" fue aprobado y ya puede iniciar sesión.`;
+          this.cargarClientesTienda();
+        },
+        error: (err) => {
+          const detalles = err?.error?.detalles;
+          this.errorAprobacion =
+            (detalles && (Object.values(detalles)[0] as string)) ||
+            err?.error?.mensaje ||
+            'No se pudo aprobar al cliente.';
+          this.cdr.detectChanges();
+        }
+      });
+  }
 
   ngOnInit(): void {
     this.detectarTiendaAdmin();
@@ -271,7 +373,7 @@ export class ClientesComponent implements OnInit {
         next: () => {
           this.modalEliminarAbierto = false;
           this.clienteAEliminar = null;
-          this.mensajeExito = `El cliente "${nombre}" fue eliminado de la base de datos.`;
+          this.mensajeExito = `El cliente "${nombre}" fue dado de baja.`;
           this.cargarClientesTienda();
         },
         error: (err) => {

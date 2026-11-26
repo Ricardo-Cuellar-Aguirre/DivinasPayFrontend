@@ -287,3 +287,36 @@
   font-weight: 700;
   cursor: pointer;
 }
+.aviso-pendientes {
+  margin-top: 6px;
+  color: #9a5b00;
+  font-weight: 600;
+}
+
+.txt-pendiente {
+  color: #8a8a8a;
+  font-style: italic;
+}
+
+.estado-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.estado-badge.activo {
+  background: #e6f6ec;
+  color: #1d7a3e;
+}
+
+.estado-badge.pendiente {
+  background: #fff3dc;
+  color: #9a5b00;
+}
+
+.estado-badge.baja {
+  background: #f3f3f3;
+  color: #777;
+}

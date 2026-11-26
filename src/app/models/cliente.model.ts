@@ -4,6 +4,7 @@ export type TipoCapitalizacion =
   | 'Mensual'
   | 'Bimestral'
   | 'Trimestral'
+  | 'Cuatrimestral'
   | 'Semestral'
   | 'Anual';
 
@@ -38,6 +39,12 @@ export interface ClienteRequestDTO {
   passwordCliente: string;
 }
 
+export interface RegistroClienteDTO {
+  nombreCliente: string;
+  usuarioCliente: string;
+  passwordCliente: string;
+}
+
 export interface ClienteResponseDTO {
   idCliente: number;
   idTienda: number;
@@ -52,6 +59,7 @@ export interface ClienteResponseDTO {
   fechaPago: number;
   usuarioCliente: string;
   estado: boolean;
+  pendienteAprobacion?: boolean;
 }
 
 export interface ClienteUpdateDTO {

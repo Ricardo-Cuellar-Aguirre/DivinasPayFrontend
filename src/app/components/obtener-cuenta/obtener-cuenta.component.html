@@ -21,6 +21,18 @@
         <div class="auth-error-alert">{{ errorMensaje }}</div>
       }
 
+      @if (registroExitoso) {
+        <div class="auth-success-alert">
+          <strong>¡Solicitud enviada!</strong>
+          Tu cuenta quedó pendiente de aprobación. La tienda te asignará tu tasa de interés, tu línea de crédito,
+          el plazo máximo y tus fechas de corte y pago; luego podrás iniciar sesión.
+        </div>
+        <a routerLink="/login" class="btn-registrarse btn-link-login">Ir a iniciar sesión</a>
+      } @else {
+      <p class="auth-intro">
+        Inscríbete con tu usuario y contraseña. La tienda revisará tu solicitud y te asignará tus condiciones de crédito.
+      </p>
+
       <form class="auth-form" (ngSubmit)="registrarCuenta()">
         
         <div class="form-field">
@@ -55,6 +67,7 @@
               <path d="M5 7.5L10 12.5L15 7.5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </div>
+          <small class="field-help">Tienda donde sacarás tus compras al crédito. Solo aparecen tiendas activas.</small>
         </div>
 
         <div class="form-field">
@@ -66,9 +79,10 @@
             maxlength="100"
             [(ngModel)]="nombre"
             class="field-input"
-            placeholder="SalonBelleza"
+            placeholder="María Fernanda López"
             required
           />
+          <small class="field-help">Tu nombre completo, tal como te conocen en la tienda (máx. 100 caracteres).</small>
         </div>
 
        
@@ -94,6 +108,7 @@
             autocomplete="username"
             required
           />
+          <small class="field-help">Será tu usuario para iniciar sesión en esta tienda (máx. 30 caracteres).</small>
         </div>
 
        
@@ -123,6 +138,7 @@
               />
             </button>
           </div>
+          <small class="field-help">Entre 8 y 72 caracteres. Se guarda cifrada.</small>
         </div>
 
        
@@ -152,6 +168,7 @@
               />
             </button>
           </div>
+          <small class="field-help">Repite la contraseña para evitar errores de tipeo.</small>
         </div>
 
        
@@ -177,6 +194,7 @@
           <a routerLink="/login" class="login-link">¿Ya tienes cuenta? Iniciar sesión</a>
         </div>
       </form>
+      }
     </div>
   </div>
 

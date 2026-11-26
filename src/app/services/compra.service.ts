@@ -51,6 +51,7 @@ export interface CompraBackendDTO {
   tir: number | null;
   tcea: number;
   ordenRecibo?: string;
+  cantidad?: number;
   cantidadComprada?: number;
 }
 
@@ -66,7 +67,7 @@ export interface RegistrarCompraRequest {
   fechaCompra?: string;
   formaPago: 'En meses' | 'Unico pago';
   numMeses?: number;
-  cantidadComprada: number;
+  cantidad: number;
 }
 
 export interface PagarCuotaRequest {

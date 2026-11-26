@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { AuthService } from '../../services/auth.service';
 import {
   CompraBackendDTO,
   CompraService,
@@ -24,6 +25,9 @@ export class PerfilCrediticioComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly http = inject(HttpClient);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly authService = inject(AuthService);
+
+  readonly esAdminTienda = this.authService.sesionActual?.rol === 'ADMIN_TIENDA';
 
   idClienteRuta: number | null = null;
   perfilCliente: any = null;
