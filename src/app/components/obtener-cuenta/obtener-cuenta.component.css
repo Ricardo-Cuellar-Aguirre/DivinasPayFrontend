@@ -333,3 +333,30 @@
     padding: 2rem 1.5rem;
   }
 }
+.auth-intro {
+  margin: 0 0 1rem;
+  color: #6b6b6b;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.auth-success-alert {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  background: #e6f6ec;
+  color: #1d5e33;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.auth-success-alert strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.btn-link-login {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}

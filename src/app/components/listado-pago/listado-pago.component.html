@@ -1,0 +1,125 @@
+<div class="listado-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Listado de pago</h1>
+      <p class="page-subtitle">
+        @if (esAdminTienda) {
+          Lo que cada cliente debe pagar en la fecha de pago, generado al cierre (fecha de corte) de su ciclo.
+        } @else {
+          Lo que debes pagar en tu próxima fecha de pago, con el detalle de tus compras e intereses.
+        }
+      </p>
+    </div>
+
+    <div class="acciones-header no-print">
+      <div class="filtro-fecha">
+        <label for="fechaPagoInput">Fecha de pago</label>
+        <input
+          id="fechaPagoInput"
+          type="date"
+          [(ngModel)]="fechaPago"
+          (change)="cargar()"
+          class="form-control"
+        />
+        <small class="field-help">Vacío = la fecha de pago más próxima con cuotas pendientes.</small>
+      </div>
+      <button type="button" class="btn-secondary" (click)="usarProximaFecha()">Próxima fecha</button>
+      <button type="button" class="btn-primary" (click)="imprimir()" [disabled]="listados.length === 0">
+        Imprimir
+      </button>
+    </div>
+  </div>
+
+  @if (mensajeError) {
+    <div class="alert-error">{{ mensajeError }}</div>
+  }
+
+  @if (cargando) {
+    <div class="dp-card empty-state">Generando listado de pago...</div>
+  } @else if (listados.length === 0) {
+    <div class="dp-card empty-state">
+      No hay cuotas pendientes{{ fechaPago ? ' con fecha de pago ' + formatearFecha(fechaPago) : '' }}.
+    </div>
+  } @else {
+    @if (esAdminTienda && listados.length > 1) {
+      <div class="dp-card resumen-general">
+        <div>
+          <span>Clientes con pago el {{ formatearFecha(fechaPago) }}</span>
+          <strong>{{ listados.length }}</strong>
+        </div>
+        <div>
+          <span>Intereses acumulados</span>
+          <strong>S/ {{ interesesGenerales | number:'1.2-2' }}</strong>
+        </div>
+        <div>
+          <span>Total a cobrar</span>
+          <strong>S/ {{ totalGeneral | number:'1.2-2' }}</strong>
+        </div>
+      </div>
+    }
+
+    @for (listado of listados; track listado.idCliente) {
+      <section class="dp-card listado-card">
+        <header class="listado-head">
+          <div>
+            <h2>{{ listado.nombreCliente }}</h2>
+            <span class="meta">
+              Cliente #{{ listado.idCliente }} · Corte: día {{ listado.fechaCorte }} ·
+              Fecha de pago: <strong>{{ formatearFecha(listado.fechaPago) }}</strong>
+            </span>
+          </div>
+          <div class="total-box">
+            <span>Total a pagar</span>
+            <strong>S/ {{ listado.totalAPagar | number:'1.2-2' }}</strong>
+          </div>
+        </header>
+
+        <div class="table-responsive">
+          <table class="dp-table">
+            <thead>
+              <tr>
+                <th>Fecha de compra</th>
+                <th>Producto / servicio</th>
+                <th>Forma de pago</th>
+                <th>Cuota</th>
+                <th>Monto compra</th>
+                <th>Días de gracia</th>
+                <th>Interés gracia</th>
+                <th>Interés cuota</th>
+                <th>A pagar</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of listado.detalle; track item.idCompra + '-' + item.numeroCuota) {
+                <tr>
+                  <td>{{ formatearFecha(item.fechaCompra) }}</td>
+                  <td>{{ item.descripcionProducto }}</td>
+                  <td>{{ item.formaPago }}</td>
+                  <td>{{ item.numeroCuota }} / {{ item.cuotasTotales }}</td>
+                  <td>S/ {{ item.montoCompra | number:'1.2-2' }}</td>
+                  <td>{{ item.diasGracia }}</td>
+                  <td>S/ {{ item.interesGracia | number:'1.2-2' }}</td>
+                  <td>S/ {{ item.interesCuota | number:'1.2-2' }}</td>
+                  <td><strong>S/ {{ item.montoCuota | number:'1.2-2' }}</strong></td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="6">Intereses acumulados (gracia + cuotas)</td>
+                <td colspan="2"><strong>S/ {{ listado.totalInteresesAcumulados | number:'1.2-2' }}</strong></td>
+                <td><strong>S/ {{ listado.totalAPagar | number:'1.2-2' }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    }
+
+    <p class="nota-calculo">
+      Intereses con año de 360 días y meses de 30 días. El interés de gracia corresponde a los días entre la compra y
+      la fecha de pago del ciclo; en compras en cuotas se capitaliza y se reparte con el método francés.
+      Montos redondeados a 2 decimales.
+    </p>
+  }
+</div>

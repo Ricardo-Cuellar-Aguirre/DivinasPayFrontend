@@ -1,0 +1,108 @@
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.page-title {
+  font-size: 1.65rem;
+  font-weight: 700;
+}
+
+.page-subtitle {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  max-width: 560px;
+}
+
+.acciones-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.filtro-fecha {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 230px;
+}
+
+.filtro-fecha label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+}
+
+.resumen-general {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.resumen-general span,
+.total-box span {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.resumen-general strong,
+.total-box strong {
+  font-size: 1.25rem;
+}
+
+.listado-card {
+  margin-bottom: 1.25rem;
+}
+
+.listado-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.listado-head h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.listado-head .meta {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.total-box {
+  text-align: right;
+}
+
+.dp-table tfoot td {
+  padding: 0.75rem 1rem;
+  border-top: 2px solid var(--border-sand);
+  background-color: #faf9f6;
+}
+
+.nota-calculo {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

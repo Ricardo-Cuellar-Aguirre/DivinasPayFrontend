@@ -39,6 +39,7 @@
           required
           class="form-control"
         />
+        <small class="field-help">Nombre y apellidos del cliente (máx. 100 caracteres).</small>
       </div>
 
       <div class="field-group">
@@ -53,6 +54,7 @@
           required
           class="form-control"
         />
+        <small class="field-help">Será el usuario con el que el cliente inicia sesión en esta tienda.</small>
         <small class="char-counter">{{ usuarioCliente.length }} / 30 caracteres</small>
       </div>
 
@@ -67,6 +69,7 @@
           required
           class="form-control"
         />
+        <small class="field-help">Clave con la que el cliente consultará su cuenta (8 a 72 caracteres).</small>
       </div>
     </div>
 
@@ -87,6 +90,7 @@
           <option value="Efectiva">Efectiva (TEA)</option>
           <option value="Nominal">Nominal</option>
         </select>
+        <small class="field-help">Efectiva: la tasa ya incluye la capitalización. Nominal: hay que indicar cada cuánto capitaliza.</small>
       </div>
 
       <div class="field-group">
@@ -101,6 +105,7 @@
           required
           class="form-control"
         />
+        <small class="field-help">Tasa anual pactada en porcentaje (30 = 30%). Se usa año de 360 días.</small>
       </div>
 
       <div class="field-group">
@@ -121,6 +126,7 @@
           <option value="Semestral">Semestral</option>
           <option value="Anual">Anual</option>
         </select>
+        <small class="field-help">Periodos por año con los que la tasa nominal se convierte a efectiva.</small>
       </div>
 
       <div class="field-group">
@@ -132,6 +138,7 @@
           disabled
           class="form-control locked"
         />
+        <small class="field-help">Moneda en la que se otorga el crédito.</small>
       </div>
 
       <div class="field-group">
@@ -146,6 +153,7 @@
           required
           class="form-control"
         />
+        <small class="field-help">Deuda máxima pendiente; no se aceptan compras que la superen.</small>
       </div>
 
       <div class="field-group">
@@ -160,6 +168,7 @@
           required
           class="form-control"
         />
+        <small class="field-help">Número máximo de cuotas mensuales que puede elegir en una compra.</small>
       </div>
 
       <div class="field-group">
@@ -174,6 +183,7 @@
           required
           class="form-control"
         />
+        <small class="field-help">Día en que se cierra el ciclo; lo comprado después pasa al mes siguiente.</small>
       </div>
 
       <div class="field-group">
@@ -188,6 +198,7 @@
           required
           class="form-control"
         />
+        <small class="field-help">Día en que el cliente se compromete a pagar; se toma el primero después del corte.</small>
       </div>
     </div>
 

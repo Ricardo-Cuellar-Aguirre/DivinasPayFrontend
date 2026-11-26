@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ClienteRequestDTO, ClienteResponseDTO } from '../../models/cliente.model';
+import { ClienteResponseDTO, RegistroClienteDTO } from '../../models/cliente.model';
 import { ErrorResponse } from '../../models/sistema.model';
 import { TiendaPublicaDTO } from '../../models/tienda.model';
 import { AuthService } from '../../services/auth.service';
@@ -36,6 +36,7 @@ export class ObtenerCuentaComponent implements OnInit {
   cargandoTiendas = true;
   enviando = false;
   errorMensaje: string | null = null;
+  registroExitoso = false;
 
  
   idTiendaSeleccionada: number | null = null;
@@ -118,16 +119,8 @@ export class ObtenerCuentaComponent implements OnInit {
     const nombreTienda = tiendaObj?.nombreTienda ?? `Tienda #${idTienda}`;
 
    
-    const payload: ClienteRequestDTO = {
+    const payload: RegistroClienteDTO = {
       nombreCliente: nombreLimpio,
-      tipoTasa: 'Efectiva',
-      tasaInteres: 24,
-      capitalizacion: null,
-      moneda: 'Soles',
-      limiteMaxCredito: 1500,
-      maxMesesCredito: 12,
-      fechaCorte: 15,
-      fechaPago: 25,
       usuarioCliente: usuarioLimpio,
       passwordCliente: this.password
     };
@@ -158,7 +151,8 @@ export class ObtenerCuentaComponent implements OnInit {
             localStorage.removeItem(CLAVE_RECORDAR_USUARIO);
           }
 
-          this.router.navigate(['/login']);
+          this.registroExitoso = true;
+          this.cdr.detectChanges();
         },
         error: (err: HttpErrorResponse) => {
           const body = err?.error as ErrorResponse | undefined;

@@ -1,69 +1,34 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-# DivinaspayFrontend
-
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.30.
-
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
-=======
 # DivinasPayFrontend
-Apartado frontend para proyecto DivinasPay del curso Finanzas e Ingenieria Economica
->>>>>>> 2c2655ce3ad4e250b59a6e7c903d34b9ee822592
-=======
-# DivinasPayFrontend
-Apartado frontend para proyecto DivinasPay del curso Finanzas e Ingenieria Economica
->>>>>>> 2c2655ce3ad4e250b59a6e7c903d34b9ee822592
+
+Apartado frontend del proyecto DivinasPay del curso Finanzas e Ingeniería Económica (SI642).
+Se conecta al backend `divinasbackend` en `http://localhost:8080/api` (ver `src/environments/environment.ts`).
+
+## Requisitos
+
+- Node.js 22.22.3 o superior (lo exige el Angular CLI)
+- Backend corriendo en el puerto 8080
+
+## Ejecutar
+
+```bash
+npm install
+npm start
+```
+
+Abrir `http://localhost:4200/`.
+
+## Roles
+
+| Rol | Qué hace |
+|---|---|
+| Administrador del sistema | Alta, modificación y baja de tiendas; bitácora general |
+| Administrador de tienda | Productos y servicios, clientes (crear, aprobar inscripciones, dar de baja), registrar ventas al crédito, registrar pagos de cuotas, listado de pago, bitácora de su tienda |
+| Cliente | Se inscribe (queda pendiente hasta que la tienda le asigna sus condiciones), consulta sus compras, su plan de pagos y su listado de pago, y simula créditos |
+
+## Compilar
+
+```bash
+npm run build
+```
+
+Los archivos quedan en `dist/`.

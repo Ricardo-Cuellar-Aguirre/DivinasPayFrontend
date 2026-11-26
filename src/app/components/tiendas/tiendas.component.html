@@ -122,6 +122,7 @@
             class="form-control"
             placeholder="Ej. Divinas Salón & Spa"
           />
+          <small class="field-help">Nombre comercial del negocio; no puede repetirse en la plataforma.</small>
         </div>
 
         <div class="form-group">
@@ -133,6 +134,7 @@
             class="form-control"
             placeholder="Ej. Av. Surco 1167"
           />
+          <small class="field-help">Dirección del local, para que los clientes de la zona lo ubiquen.</small>
         </div>
 
         <div class="form-group">
@@ -145,6 +147,7 @@
             class="form-control"
             placeholder="Ej. 987654321"
           />
+          <small class="field-help">Celular o teléfono de contacto, solo 9 dígitos.</small>
           @if (tiendaForm.get('telefono')?.touched && tiendaForm.get('telefono')?.hasError('pattern')) {
             <span class="field-error">El teléfono debe tener exactamente 9 dígitos numéricos.</span>
           }
@@ -159,6 +162,7 @@
             class="form-control"
             placeholder="Ej. dan_carri_69"
           />
+          <small class="field-help">Usuario con el que el dueño del negocio administrará la tienda; debe ser único.</small>
         </div>
 
         @if (!tiendaEditando) {
@@ -170,6 +174,7 @@
               formControlName="passwordAdmin"
               class="form-control"
             />
+            <small class="field-help">Clave del administrador de la tienda (8 a 72 caracteres). Se guarda cifrada.</small>
           </div>
         }
 

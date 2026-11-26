@@ -686,3 +686,14 @@
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
 }
+.cliente-venta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+.cliente-venta-row label {
+  font-weight: 700;
+  font-size: 0.85rem;
+}

@@ -4,6 +4,7 @@ import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { AuthService } from '../../services/auth.service';
 import {
   CompraBackendDTO,
   CompraService,
@@ -23,6 +24,9 @@ export class DetalleCreditoComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly compraService = inject(CompraService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly authService = inject(AuthService);
+
+  readonly esAdminTienda = this.authService.sesionActual?.rol === 'ADMIN_TIENDA';
 
   idCliente = 0;
   idCompra = 0;

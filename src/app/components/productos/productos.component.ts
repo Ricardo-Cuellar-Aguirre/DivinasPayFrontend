@@ -256,7 +256,9 @@ export class ProductosComponent implements OnInit {
   formProveedor = '';
   formMarca = '';
   formDescripcion = '';
-  formUnidadMedida: 'Servicio' | 'Pack' | 'Unidad' = 'Servicio';
+  formUnidadMedida = 'Unidad';
+  readonly unidadesMedida = ['Unidad', 'Kilogramo', 'Gramo', 'Litro', 'Paquete', 'Pack', 'Docena', 'Caja', 'Botella', 'Servicio', 'Sesión'];
+  formFormaVenta: 'En meses' | 'Al contado' = 'En meses';
   formPrecioContado = 0;
   formPrecioCredito = 0;
   guardandoProducto = false;
@@ -280,11 +282,13 @@ export class ProductosComponent implements OnInit {
 
   modalCompraAbierto = false;
   productoSeleccionado: ProductoAdminDTO | null = null;
-  modalidad: 'CONTADO' | 'CREDITO' = 'CREDITO';
+  modalidad: 'UNICO' | 'CREDITO' = 'CREDITO';
   cantidadComprada = 1;
   fechaCompra = this.hoyLocalIso();
   numMeses = 3;
-  metodoPagoContado: 'TARJETA' | 'YAPE_PLIN' | 'PAGO_EFECTIVO' = 'YAPE_PLIN';
+
+  clientesVenta: any[] = [];
+  idClienteVenta: number | null = null;
 
   simulacion: CompraBackendDTO | null = null;
   simulando = false;
@@ -293,13 +297,56 @@ export class ProductosComponent implements OnInit {
 
   modalExitoAbierto = false;
   compraExitosa: CompraBackendDTO | null = null;
-  modalidadExitosa: 'CONTADO' | 'CREDITO' = 'CREDITO';
+  modalidadExitosa: 'UNICO' | 'CREDITO' = 'CREDITO';
 
   ngOnInit(): void {
     const sesion = this.authService.sesionActual;
     this.esAdminTienda = sesion?.rol === 'ADMIN_TIENDA';
     this.detectarTiendaAdmin(sesion?.idTienda);
     this.cargarCatalogoYDatos();
+    if (this.esAdminTienda) {
+      this.cargarClientesVenta();
+    }
+  }
+
+  private cargarClientesVenta(): void {
+    this.http
+      .get<any[]>(`${environment.apiUrl}/tiendas/${this.adminIdTienda}/clientes`)
+      .subscribe({
+        next: (lista) => {
+          this.clientesVenta = (lista || [])
+            .filter((c) => c.estado !== false && !c.pendienteAprobacion)
+            .sort((a, b) => String(a.nombreCliente).localeCompare(String(b.nombreCliente)));
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  onClienteVentaChange(): void {
+    this.errorCompra = null;
+    this.simulacion = null;
+    const cliente = this.clientesVenta.find((c) => c.idCliente === Number(this.idClienteVenta));
+    this.perfilCliente = cliente ?? null;
+    if (!cliente) {
+      this.cdr.detectChanges();
+      return;
+    }
+    this.maxMesesCliente = Number(cliente.maxMesesCredito) || 1;
+    if (this.numMeses > this.maxMesesCliente) {
+      this.numMeses = this.maxMesesCliente;
+    }
+    if (this.maxMesesCliente < 2 && this.modalidad === 'CREDITO') {
+      this.modalidad = 'UNICO';
+    }
+    this.compraService.obtenerPagos(this.adminIdTienda, cliente.idCliente).subscribe({
+      next: (res) => {
+        if (res?.limiteDisponible != null) {
+          this.limiteDisponible = res.limiteDisponible;
+          this.cdr.detectChanges();
+        }
+      }
+    });
+    this.actualizarSimulacion();
   }
 
   private detectarTiendaAdmin(idTiendaSesion?: number | null): void {
@@ -459,7 +506,7 @@ export class ProductosComponent implements OnInit {
 
  
   get formFormaVentaCalculada(): 'En meses' | 'Al contado' {
-    return this.formUnidadMedida === 'Servicio' ? 'En meses' : 'Al contado';
+    return this.formFormaVenta;
   }
 
   abrirModalCrearProducto(): void {
@@ -469,7 +516,8 @@ export class ProductosComponent implements OnInit {
     this.formProveedor = '';
     this.formMarca = '';
     this.formDescripcion = '';
-    this.formUnidadMedida = 'Servicio';
+    this.formUnidadMedida = 'Unidad';
+    this.formFormaVenta = 'En meses';
     this.formPrecioContado = 0;
     this.formPrecioCredito = 0;
     this.errorFormAdmin = null;
@@ -485,14 +533,8 @@ export class ProductosComponent implements OnInit {
     this.formMarca = prod.marca || '';
     this.formDescripcion = prod.descripcion || '';
 
-    const u = (prod.unidadMedida || '').trim().toLowerCase();
-    if (u === 'pack') {
-      this.formUnidadMedida = 'Pack';
-    } else if (u === 'unidad') {
-      this.formUnidadMedida = 'Unidad';
-    } else {
-      this.formUnidadMedida = 'Servicio';
-    }
+    this.formUnidadMedida = (prod.unidadMedida || 'Unidad').trim();
+    this.formFormaVenta = prod.formaVenta === 'Al contado' ? 'Al contado' : 'En meses';
 
     this.formPrecioContado = Number(prod.precioContado ?? 0);
     this.formPrecioCredito = Number(prod.precioCredito ?? 0);
@@ -735,7 +777,7 @@ export class ProductosComponent implements OnInit {
 
   
   get etiquetaTasaCliente(): string {
-    if (!this.perfilCliente) return 'TEA';
+    if (!this.perfilCliente) return '—';
     const tasa = Number(this.perfilCliente.tasaInteres ?? 0).toFixed(2);
     if (this.perfilCliente.tipoTasa?.toLowerCase() === 'nominal') {
       const cap = this.perfilCliente.capitalizacion || 'Mensual';
@@ -762,9 +804,7 @@ export class ProductosComponent implements OnInit {
   cambiarCantidad(delta: number): void {
     const nueva = this.cantidadSeguro + delta;
     this.cantidadComprada = nueva < 1 ? 1 : nueva;
-    if (this.modalidad === 'CREDITO') {
-      this.actualizarSimulacion();
-    }
+    this.actualizarSimulacion();
     this.cdr.detectChanges();
   }
 
@@ -774,9 +814,7 @@ export class ProductosComponent implements OnInit {
     } else {
       this.cantidadComprada = Math.floor(Number(this.cantidadComprada));
     }
-    if (this.modalidad === 'CREDITO') {
-      this.actualizarSimulacion();
-    }
+    this.actualizarSimulacion();
     this.cdr.detectChanges();
   }
 
@@ -785,18 +823,18 @@ export class ProductosComponent implements OnInit {
     this.errorCompra = null;
     this.cantidadComprada = 1;
     this.fechaCompra = this.hoyLocalIso();
+    this.simulacion = null;
 
-    if (producto.formaVenta === 'Al contado') {
-      this.modalidad = 'CONTADO';
+    if (producto.formaVenta === 'Al contado' || this.maxMesesCliente < 2) {
+      this.modalidad = 'UNICO';
       this.numMeses = 1;
-      this.simulacion = null;
     } else {
       this.modalidad = 'CREDITO';
       this.numMeses = Math.min(3, this.maxMesesCliente);
-      this.actualizarSimulacion();
     }
 
     this.modalCompraAbierto = true;
+    this.actualizarSimulacion();
     this.cdr.detectChanges();
   }
 
@@ -817,9 +855,14 @@ export class ProductosComponent implements OnInit {
   }
 
   irAMisCompras(): void {
+    const compra = this.compraExitosa;
     this.modalExitoAbierto = false;
     this.compraExitosa = null;
-    this.router.navigate(['/mis-compras']);
+    if (compra?.idCompra && compra?.idCliente) {
+      this.router.navigate(['/creditos', compra.idCliente, compra.idCompra]);
+    } else {
+      this.router.navigate(['/clientes']);
+    }
   }
 
   get opcionesMeses(): number[] {
@@ -830,22 +873,19 @@ export class ProductosComponent implements OnInit {
     return arr;
   }
 
-  seleccionarModalidad(nueva: 'CONTADO' | 'CREDITO'): void {
-    if (nueva === 'CREDITO' && this.productoSeleccionado?.formaVenta === 'Al contado') {
+  seleccionarModalidad(nueva: 'UNICO' | 'CREDITO'): void {
+    if (nueva === 'CREDITO' && (this.productoSeleccionado?.formaVenta === 'Al contado' || this.maxMesesCliente < 2)) {
       return;
     }
     this.modalidad = nueva;
     this.errorCompra = null;
 
-    if (nueva === 'CONTADO') {
+    if (nueva === 'UNICO') {
       this.numMeses = 1;
-      this.simulacion = null;
-    } else {
-      if (this.numMeses < 2) {
-        this.numMeses = Math.min(3, this.maxMesesCliente);
-      }
-      this.actualizarSimulacion();
+    } else if (this.numMeses < 2) {
+      this.numMeses = Math.min(3, this.maxMesesCliente);
     }
+    this.actualizarSimulacion();
     this.cdr.detectChanges();
   }
 
@@ -861,22 +901,34 @@ export class ProductosComponent implements OnInit {
     return String(10000 + (compra.idCompra || 1)).padStart(6, '0');
   }
 
+  private idsCompra(): { idTienda: number; idCliente: number } | null {
+    if (this.esAdminTienda) {
+      return this.idClienteVenta ? { idTienda: this.adminIdTienda, idCliente: Number(this.idClienteVenta) } : null;
+    }
+    const sesion = this.authService.sesionActual;
+    if (sesion?.idTienda == null || sesion?.idCliente == null) return null;
+    return { idTienda: Number(sesion.idTienda), idCliente: Number(sesion.idCliente) };
+  }
+
   actualizarSimulacion(): void {
-    if (!this.productoSeleccionado || this.modalidad !== 'CREDITO') return;
+    if (!this.productoSeleccionado) return;
+    const ids = this.idsCompra();
+    if (!ids) {
+      this.simulacion = null;
+      this.cdr.detectChanges();
+      return;
+    }
     this.errorCompra = null;
     this.simulando = true;
     this.cdr.detectChanges();
 
-    const fecha = this.fechaCompra || this.hoyLocalIso();
-    const montoTotal = this.totalCreditoModal;
-    const meses = Number(this.numMeses);
-
+    const esUnico = this.modalidad === 'UNICO';
     this.compraService
-      .simularCompra({
-        fechaCompra: fecha,
-        monto: montoTotal,
-        formaPago: 'En meses',
-        numMeses: meses
+      .simular(ids.idTienda, ids.idCliente, {
+        fechaCompra: this.fechaCompra || this.hoyLocalIso(),
+        monto: this.totalCreditoModal,
+        formaPago: esUnico ? 'Unico pago' : 'En meses',
+        numMeses: esUnico ? undefined : Number(this.numMeses)
       })
       .pipe(
         timeout(8000),
@@ -888,213 +940,47 @@ export class ProductosComponent implements OnInit {
       .subscribe({
         next: (sim) => {
           this.simulacion = sim;
-          this.simulando = false;
           this.cdr.detectChanges();
         },
         error: (err) => {
-          this.simulando = false;
-          if (this.perfilCliente) {
-            this.simulacion = this.simularLocalSegunManual(
-              this.productoSeleccionado!,
-              fecha,
-              meses,
-              montoTotal
-            );
-          } else {
-            this.simulacion = null;
-            this.errorCompra =
-              err?.error?.mensaje || 'No se pudo obtener la simulación del servidor.';
-          }
+          this.simulacion = null;
+          this.errorCompra = err?.error?.mensaje || 'No se pudo obtener la simulación del servidor.';
           this.cdr.detectChanges();
         }
       });
   }
 
-  private simularLocalSegunManual(
-    producto: ProductoAdminDTO,
-    fechaCompraIso: string,
-    n: number,
-    monto: number
-  ): CompraBackendDTO {
-    const r2 = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
-    const tasaPct = Number(this.perfilCliente?.tasaInteres ?? 30);
-    const tipoTasa = (this.perfilCliente?.tipoTasa || 'Efectiva').toLowerCase();
-    const cap = (this.perfilCliente?.capitalizacion || 'Mensual').toLowerCase();
-
-    const mapaM: Record<string, number> = {
-      diaria: 360,
-      mensual: 12,
-      bimestral: 6,
-      trimestral: 4,
-      semestral: 2,
-      anual: 1
-    };
-
-    const tasaDecimal = tasaPct / 100;
-    const tea =
-      tipoTasa === 'nominal'
-        ? Math.pow(1 + tasaDecimal / (mapaM[cap] || 12), mapaM[cap] || 12) - 1
-        : tasaDecimal;
-    const tem = Math.pow(1 + tea, 30 / 360) - 1;
-
-    const [anio, mes, dia] = fechaCompraIso.split('-').map(Number);
-    const corte = Number(this.perfilCliente?.fechaCorte ?? 20);
-    const diaPago = Number(this.perfilCliente?.fechaPago ?? 26);
-
-    let mesGracia = mes;
-    let anioGracia = anio;
-    if (dia > corte) {
-      mesGracia += 1;
-      if (mesGracia > 12) {
-        mesGracia = 1;
-        anioGracia += 1;
-      }
-    }
-    const ultimoDiaMes = new Date(anioGracia, mesGracia, 0).getDate();
-    const diaRealGracia = Math.min(diaPago, ultimoDiaMes);
-    const fechaFinGraciaDate = new Date(anioGracia, mesGracia - 1, diaRealGracia);
-    const fechaCompraDate = new Date(anio, mes - 1, dia);
-    const diasGracia = Math.max(
-      0,
-      Math.round((fechaFinGraciaDate.getTime() - fechaCompraDate.getTime()) / (1000 * 60 * 60 * 24))
-    );
-
-    const capitalCapitalizado = r2(monto * Math.pow(1 + tea, diasGracia / 360));
-    const interesGracia = r2(capitalCapitalizado - monto);
-    const factor = Math.pow(1 + tem, n);
-    const cuotaFija = r2((capitalCapitalizado * tem * factor) / (factor - 1));
-
-    const cuotas: CuotaBackendDTO[] = [];
-    let saldo = capitalCapitalizado;
-    let totalCuotas = 0;
-    let totalIntereses = 0;
-
-    for (let i = 1; i <= n; i++) {
-      let mVenc = mesGracia + i;
-      let aVenc = anioGracia;
-      while (mVenc > 12) {
-        mVenc -= 12;
-        aVenc += 1;
-      }
-      const dMax = new Date(aVenc, mVenc, 0).getDate();
-      const dVenc = Math.min(diaPago, dMax);
-      const fechaVenc = `${aVenc}-${String(mVenc).padStart(2, '0')}-${String(dVenc).padStart(2, '0')}`;
-
-      const interes = r2(saldo * tem);
-      let amortizacion = r2(cuotaFija - interes);
-      let cuotaActual = cuotaFija;
-
-      if (i === n) {
-        amortizacion = r2(saldo);
-        cuotaActual = r2(amortizacion + interes);
-      }
-
-      const saldoFinal = i === n ? 0 : r2(saldo - amortizacion);
-
-      cuotas.push({
-        idCuota: i,
-        numero: i,
-        fechaVencimiento: fechaVenc,
-        saldoInicial: saldo,
-        cuota: cuotaActual,
-        interes,
-        amortizacion,
-        saldoFinal,
-        estado: 'Pendiente',
-        fechaPagoReal: null
-      });
-
-      totalCuotas = r2(totalCuotas + cuotaActual);
-      totalIntereses = r2(totalIntereses + interes);
-      saldo = saldoFinal;
-    }
-
-    const tcea = Math.pow(1 + tem, 12) - 1;
-
-    return {
-      idCompra: 0,
-      idCliente: this.perfilCliente?.idCliente ?? 1,
-      idProductoServicio: producto.idProductoServicio,
-      descripcionProducto: producto.descripcion,
-      fechaCompra: fechaCompraIso,
-      monto,
-      formaPago: 'En meses',
-      numMeses: n,
-      fechaFinGracia: `${anioGracia}-${String(mesGracia).padStart(2, '0')}-${String(diaRealGracia).padStart(2, '0')}`,
-      diasGracia,
-      tasaEfectivaAnual: tea,
-      tasaEfectivaMensual: tem,
-      capitalCapitalizado,
-      interesGracia,
-      cuotaFija,
-      cuotas,
-      totalCuotas,
-      totalIntereses,
-      tir: tem,
-      tcea
-    };
-  }
-
   confirmarCompra(): void {
-    if (!this.productoSeleccionado || this.procesandoCompra) return;
+    if (!this.esAdminTienda || !this.productoSeleccionado || this.procesandoCompra) return;
     this.errorCompra = null;
+    if (!this.idClienteVenta) {
+      this.errorCompra = 'Selecciona el cliente que realiza la compra.';
+      return;
+    }
 
-    const esContado =
-      this.modalidad === 'CONTADO' || this.productoSeleccionado.formaVenta === 'Al contado';
-    const fecha = this.fechaCompra || this.hoyLocalIso();
-    const qty = this.cantidadSeguro;
-    const totalContado = this.totalContadoModal;
-
-    const payload = esContado
-      ? {
-          idProductoServicio: this.productoSeleccionado.idProductoServicio,
-          fechaCompra: fecha,
-          formaPago: 'Unico pago' as const,
-          numMeses: 1,
-          cantidadComprada: qty
-        }
-      : {
-          idProductoServicio: this.productoSeleccionado.idProductoServicio,
-          fechaCompra: fecha,
-          formaPago: 'En meses' as const,
-          numMeses: Number(this.numMeses),
-          cantidadComprada: qty
-        };
+    const esUnico = this.modalidad === 'UNICO' || this.productoSeleccionado.formaVenta === 'Al contado';
+    const payload = {
+      idProductoServicio: this.productoSeleccionado.idProductoServicio,
+      fechaCompra: this.fechaCompra || this.hoyLocalIso(),
+      formaPago: esUnico ? ('Unico pago' as const) : ('En meses' as const),
+      numMeses: esUnico ? 1 : Number(this.numMeses),
+      cantidad: this.cantidadSeguro
+    };
 
     this.procesandoCompra = true;
     this.cdr.detectChanges();
 
     this.compraService
-      .registrarCompra(payload)
+      .registrar(this.adminIdTienda, Number(this.idClienteVenta), payload)
       .pipe(timeout(10000))
       .subscribe({
         next: (compraCreada) => {
-          const compraConDatos: CompraBackendDTO = {
-            ...compraCreada,
-            cantidadComprada: compraCreada.cantidadComprada ?? qty,
-            monto: esContado ? totalContado : compraCreada.monto
-          };
-
-          if (esContado && compraCreada?.idCompra) {
-            this.compraService
-              .pagarCuota(compraCreada.idCompra, 1, fecha)
-              .pipe(
-                timeout(8000),
-                catchError(() => of(compraConDatos)),
-                finalize(() => {
-                  this.finalizarCompraConExito(compraConDatos, 'CONTADO');
-                })
-              )
-              .subscribe();
-          } else {
-            this.finalizarCompraConExito(compraConDatos, 'CREDITO');
-          }
+          this.finalizarCompraConExito(compraCreada, esUnico ? 'UNICO' : 'CREDITO');
         },
         error: (err) => {
           this.procesandoCompra = false;
           this.errorCompra =
-            err?.error?.mensaje ||
-            'No se pudo registrar la compra en la base de datos. Verifica tu saldo disponible.';
+            err?.error?.mensaje || 'No se pudo registrar la compra. Verifica el crédito disponible del cliente.';
           this.cdr.detectChanges();
         }
       });
@@ -1102,7 +988,7 @@ export class ProductosComponent implements OnInit {
 
   private finalizarCompraConExito(
     compra: CompraBackendDTO,
-    modalidadUsada: 'CONTADO' | 'CREDITO'
+    modalidadUsada: 'UNICO' | 'CREDITO'
   ): void {
     this.procesandoCompra = false;
     this.modalCompraAbierto = false;

@@ -55,6 +55,7 @@ export class LayoutComponent implements OnInit {
         { label: 'Productos y Servicios', route: '/productos', icon: 'assets/icons/menu-productos.png' },
         { label: 'Mi Tienda', route: '/ubicar-tiendas', icon: 'assets/icons/menu-tiendas.png' },
         { label: 'Mis Compras', route: '/creditos', icon: 'assets/icons/menu-compras.png' },
+        { label: 'Mi listado de pago', route: '/listado-pago', icon: 'assets/icons/menu-novedades.png' },
         { label: 'Mi perfil', route: '/configuracion', icon: 'assets/icons/menu-perfil.png' }
       ];
     } else if (rol === 'ADMIN_TIENDA') {
@@ -62,6 +63,8 @@ export class LayoutComponent implements OnInit {
         { label: 'Dashboard', route: '/dashboard', icon: 'assets/icons/menu-novedades.png' },
         { label: 'Clientes', route: '/clientes', icon: 'assets/icons/menu-perfil.png' },
         { label: 'Productos y Servicios', route: '/productos', icon: 'assets/icons/menu-productos.png' },
+        { label: 'Listado de pago', route: '/listado-pago', icon: 'assets/icons/menu-compras.png' },
+        { label: 'Bitácora', route: '/auditoria', icon: 'assets/icons/menu-novedades.png' },
         { label: 'Configuración', route: '/configuracion', icon: 'assets/icons/menu-tiendas.png' }
       ];
     } else {

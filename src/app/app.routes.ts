@@ -15,6 +15,7 @@ import { AuditoriaComponent } from './components/auditoria/auditoria.component';
 import { ObtenerCuentaComponent } from './components/obtener-cuenta/obtener-cuenta.component';
 import { NovedadesComponent } from './components/novedades/novedades.component';
 import { UbicarTiendasComponent } from './components/ubicar-tiendas/ubicar-tiendas.component';
+import { ListadoPagoComponent } from './components/listado-pago/listado-pago.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -81,6 +82,12 @@ export const routes: Routes = [
       {
         path: 'creditos/:idCliente/:idCompra',
         component: DetalleCreditoComponent,
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN_TIENDA', 'CLIENTE'] }
+      },
+      {
+        path: 'listado-pago',
+        component: ListadoPagoComponent,
         canActivate: [roleGuard],
         data: { roles: ['ADMIN_TIENDA', 'CLIENTE'] }
       },
